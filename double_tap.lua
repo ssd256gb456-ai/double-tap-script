@@ -1,4 +1,4 @@
--- Single Tap DT System
+-- Single Tap DT System - Fixed Version
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -12,6 +12,7 @@ local guiVisible = false
 local lastActionTime = 0
 local actionCooldown = 0.3
 local isProcessing = false
+local dtIndicator = nil
 
 -- Создание основного GUI
 local function createMainGUI()
@@ -22,25 +23,25 @@ local function createMainGUI()
     screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
     -- Индикатор DT (слева экрана)
-    local dtIndicator = Instance.new("TextLabel")
-    dtIndicator.Name = "DTIndicator"
-    dtIndicator.Size = UDim2.new(0, 60, 0, 30)
-    dtIndicator.Position = UDim2.new(0, 10, 0, 10)
-    dtIndicator.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    dtIndicator.TextColor3 = Color3.fromRGB(255, 255, 255)
-    dtIndicator.Text = "DT"
-    dtIndicator.Font = Enum.Font.GothamBold
-    dtIndicator.TextSize = 16
-    dtIndicator.TextStrokeTransparency = 0
-    dtIndicator.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    dtIndicator.Visible = true
-    dtIndicator.Parent = screenGui
+    local indicator = Instance.new("TextLabel")
+    indicator.Name = "DTIndicator"
+    indicator.Size = UDim2.new(0, 60, 0, 30)
+    indicator.Position = UDim2.new(0, 10, 0, 10)
+    indicator.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    indicator.TextColor3 = Color3.fromRGB(255, 255, 255)
+    indicator.Text = "DT"
+    indicator.Font = Enum.Font.GothamBold
+    indicator.TextSize = 16
+    indicator.TextStrokeTransparency = 0
+    indicator.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    indicator.Visible = true
+    indicator.Parent = screenGui
 
     local UICorner = Instance.new("UICorner")
     UICorner.CornerRadius = UDim.new(0, 6)
-    UICorner.Parent = dtIndicator
+    UICorner.Parent = indicator
 
-    return screenGui, dtIndicator
+    return screenGui, indicator
 end
 
 -- Создание меню настроек
@@ -130,7 +131,9 @@ end
 local function checkWallCollision(startPos, endPos)
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    if LocalPlayer.Character then
+        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    end
     
     local raycastResult = Workspace:Raycast(startPos, (endPos - startPos), raycastParams)
     
@@ -165,10 +168,13 @@ end
 -- Функция анимации индикатора
 local function animateDTIndicator()
     if dtIndicator then
+        -- Сохраняем оригинальный цвет
+        local originalColor = dtIndicator.BackgroundColor3
+        
         -- Мигание при активации
         dtIndicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
         wait(0.1)
-        dtIndicator.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        dtIndicator.BackgroundColor3 = originalColor
     end
 end
 
@@ -191,6 +197,9 @@ local function performSingleMove()
     
     lastActionTime = currentTime
     
+    -- Анимируем индикатор
+    animateDTIndicator()
+    
     local character = LocalPlayer.Character
     if not character then
         isProcessing = false
@@ -204,9 +213,6 @@ local function performSingleMove()
         isProcessing = false
         return
     end
-    
-    -- Анимируем индикатор
-    animateDTIndicator()
     
     -- Получаем направление движения
     local direction = getMoveDirection()
@@ -247,7 +253,8 @@ local function performSingleMove()
 end
 
 -- Создаем GUI
-local mainScreenGui, dtIndicator = createMainGUI()
+local mainScreenGui, indicator = createMainGUI()
+dtIndicator = indicator -- Сохраняем ссылку на индикатор
 local menuFrame, bindLabel, changeBind, statusLabel, closeButton = createMenuGUI(mainScreenGui)
 
 -- Обработчик нажатия кнопки
@@ -288,3 +295,25 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         local bindName = tostring(input.KeyCode or input.UserInputType):gsub("Enum.%a+%.", "")
         bindLabel.Text = "Current Bind: " .. bindName
         listeningForBind = false
+        wait(0.5)
+        bindLabel.Text = "Bind changed to: " .. bindName
+    end
+end)
+
+-- Подключаем обработчик ввода
+UserInputService.InputBegan:Connect(onInputBegan)
+
+-- Защита от удаления GUI
+LocalPlayer.CharacterAdded:Connect(function()
+    wait(1)
+    if not mainScreenGui or not mainScreenGui.Parent then
+        mainScreenGui, indicator = createMainGUI()
+        dtIndicator = indicator
+        menuFrame, bindLabel, changeBind, statusLabel, closeButton = createMenuGUI(mainScreenGui)
+    end
+end)
+
+print("Single Tap DT System loaded!")
+print("DT indicator visible on left side")
+print("Press bind key ONCE for single teleport")
+print("Press DEL to open settings")
