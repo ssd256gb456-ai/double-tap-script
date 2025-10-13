@@ -1,8 +1,7 @@
--- Hold System - Small Movement
+-- Directional Move System
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 -- Переменные системы
@@ -10,12 +9,13 @@ local currentBind = Enum.UserInputType.MouseButton1
 local listeningForBind = false
 local scriptActive = true
 local guiVisible = false
-local isKeyPressed = false
+local lastActionTime = 0
+local actionCooldown = 0.2
 
 -- Создание GUI
 local function createGUI()
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "HoldSystem_" .. tostring(math.random(1, 10000))
+    screenGui.Name = "DirectionalMove_" .. tostring(math.random(1, 10000))
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -39,7 +39,7 @@ local function createGUI()
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Text = "Small Move System"
+    title.Text = "Directional Move"
     title.Font = Enum.Font.GothamBold
     title.TextSize = 14
     title.Parent = frame
@@ -116,8 +116,38 @@ local function checkWallCollision(startPos, endPos)
     return false, endPos
 end
 
--- Функция маленького перемещения
-local function performSmallMove()
+-- Функция определения направления движения
+local function getMoveDirection()
+    local character = LocalPlayer.Character
+    if not character then return Vector3.new(0, 0, 0) end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then return Vector3.new(0, 0, 0) end
+    
+    -- Получаем направление движения от Humanoid
+    local moveDirection = humanoid.MoveDirection
+    
+    -- Если персонаж не двигается, используем направление взгляда
+    if moveDirection.Magnitude < 0.1 then
+        moveDirection = rootPart.CFrame.LookVector
+    end
+    
+    return moveDirection.Unit
+end
+
+-- Функция безопасного перемещения
+local function performDirectionalMove()
+    local currentTime = tick()
+    
+    -- Защита от спама
+    if currentTime - lastActionTime < actionCooldown then
+        return
+    end
+    
+    lastActionTime = currentTime
+    
     local character = LocalPlayer.Character
     if not character then return end
     
@@ -126,30 +156,40 @@ local function performSmallMove()
     
     if not humanoid or not rootPart then return end
     
-    -- Получаем направление взгляда
-    local direction = rootPart.CFrame.LookVector
+    -- Получаем направление движения
+    local direction = getMoveDirection()
+    
+    -- Если направление нулевое, выходим
+    if direction.Magnitude < 0.1 then
+        return
+    end
     
     -- Начальная позиция
     local startPos = rootPart.Position
     
-    -- Конечная позиция (маленькое расстояние - 2 studs)
-    local endPos = startPos + direction * 2
+    -- Конечная позиция (маленькое расстояние - 3 studs)
+    local endPos = startPos + direction * 3
     
     -- Проверяем столкновение со стенами
     local hitWall, hitPosition = checkWallCollision(startPos, endPos)
     
     if hitWall then
-        -- Если есть стена, двигаемся до стены минус маленький отступ
-        local safeDistance = 0.5
+        -- Если есть стена, двигаемся до стены минус отступ
+        local safeDistance = 1.0
         local moveVector = (hitPosition - startPos)
         local moveDistance = math.max(0, moveVector.Magnitude - safeDistance)
-        local safePosition = startPos + direction * moveDistance
-        rootPart.CFrame = CFrame.new(safePosition, safePosition + direction)
-        print("Small move to wall: " .. tostring(math.floor(moveDistance * 10)/10) .. " studs")
+        
+        if moveDistance > 0.5 then  -- Минимальная дистанция для перемещения
+            local safePosition = startPos + direction * moveDistance
+            rootPart.CFrame = CFrame.new(safePosition, safePosition + direction)
+            print("Moved to wall: " .. tostring(math.floor(moveDistance * 10)/10) .. " studs")
+        else
+            print("Too close to wall")
+        end
     else
         -- Если стены нет, двигаемся на маленькое расстояние
         rootPart.CFrame = CFrame.new(endPos, endPos + direction)
-        print("Small move: 2 studs")
+        print("Directional move: 3 studs")
     end
 end
 
@@ -160,22 +200,9 @@ local screenGui, frame, bindLabel, changeBind, statusLabel, closeButton = create
 local function onInputBegan(input, gameProcessed)
     if gameProcessed or not scriptActive then return end
     
-    if input.UserInputType == currentBind and not isKeyPressed then
-        isKeyPressed = true
-        print("Key pressed - Small move activated")
-        
-        -- Выполняем маленькое перемещение
-        performSmallMove()
-    end
-end
-
--- Обработчик отпускания кнопки
-local function onInputEnded(input, gameProcessed)
-    if gameProcessed then return end
-    
     if input.UserInputType == currentBind then
-        isKeyPressed = false
-        print("Key released - Ready for next small move")
+        -- Выполняем перемещение только при нажатии
+        performDirectionalMove()
     end
 end
 
@@ -212,9 +239,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Подключаем обработчики ввода
+-- Подключаем обработчик ввода
 UserInputService.InputBegan:Connect(onInputBegan)
-UserInputService.InputEnded:Connect(onInputEnded)
 
 -- Защита от удаления GUI
 LocalPlayer.CharacterAdded:Connect(function()
@@ -224,5 +250,5 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
-print("Small Move System loaded! Press DEL to open menu.")
-print("Press bind key for small move (2 studs forward).")
+print("Directional Move System loaded! Press DEL to open menu.")
+print("Press bind key to move 3 studs in your movement direction.")
