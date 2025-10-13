@@ -151,7 +151,7 @@ end
 local function sendTrashTalk()
     if trashTalkEnabled then
         local message = getRandomTrashTalk()
-        game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
+        print("[TrashTalk]: " .. message)
     end
 end
 
@@ -280,4 +280,4 @@ UserInputService.InputBegan:Connect(onInputBegan)
 print("DT System Ready")
 print("LMB = Teleport 6 studs")
 print("DEL = Toggle Menu")
-print("TrashTalk system added")
+print("TrashTalk prints to console when enabled")
