@@ -1,0 +1,198 @@
+-- Rage Bot Configuration Script for Educational Purposes
+local RageBot = {
+    Enabled = true,
+    TargetSelection = "Cycle",
+    FriendlyFire = false,
+    Hitbox = "Head",
+    
+    MultiPoint = {
+        Enabled = true,
+        Scale = 90,
+        Quality = "High"
+    },
+    
+    AutoFire = {
+        Mode = "OnHotkey",
+        Hotkey = Enum.KeyCode.Q
+    },
+    
+    AutoPenetration = true,
+    SilentAim = true,
+    
+    HitChance = {
+        Minimum = 60,
+        Precision = 25
+    },
+    
+    FOV = {
+        Maximum = 180
+    },
+    
+    Damage = {
+        Minimum = 10
+    },
+    
+    AutoScope = true,
+    ReduceAimStep = true
+}
+
+-- Other Features
+local Other = {
+    RemoveSpread = true,
+    RemoveRecoil = true,
+    QuickStop = true,
+    QuickStopMode = "QuickStopPlusDuck",
+    AccuracyBoost = "Off",
+    AntiAimCorrection = true,
+    FalseLagCorrection = true,
+    DelayShot = false,
+    PreferBodyAim = false
+}
+
+-- Anti-Aimbot Settings
+local AntiAimbot = {
+    Pitch = "Off",
+    Yaw = "Off", 
+    Edge = "Off",
+    False = "Off",
+    Dynamic = false
+}
+
+-- Main Rage Bot Function
+local function InitializeRageBot()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local Mouse = LocalPlayer:GetMouse()
+    local Camera = workspace.CurrentCamera
+    
+    -- Target Finding Function
+    local function FindBestTarget()
+        local bestTarget = nil
+        local bestFOV = RageBot.FOV.Maximum
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                if RageBot.FriendlyFire == false and player.Team == LocalPlayer.Team then
+                    continue
+                end
+                
+                local character = player.Character
+                local head = character.Head
+                local screenPoint, onScreen = Camera:WorldToScreenPoint(head.Position)
+                
+                if onScreen then
+                    local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+                    local targetPos = Vector2.new(screenPoint.X, screenPoint.Y)
+                    local fov = (mousePos - targetPos).Magnitude
+                    
+                    if fov < bestFOV then
+                        bestFOV = fov
+                        bestTarget = {
+                            Player = player,
+                            Character = character,
+                            Hitbox = head,
+                            Distance = (Camera.CFrame.Position - head.Position).Magnitude
+                        }
+                    end
+                end
+            end
+        end
+        
+        return bestTarget
+    end
+    
+    -- Multi-Point Calculation
+    local function CalculateMultiPoint(hitbox)
+        if not RageBot.MultiPoint.Enabled then
+            return hitbox.Position
+        end
+        
+        local offset = Vector3.new(
+            (math.random() - 0.5) * 2 * (RageBot.MultiPoint.Scale / 100),
+            (math.random() - 0.5) * 2 * (RageBot.MultiPoint.Scale / 100),
+            (math.random() - 0.5) * 2 * (RageBot.MultiPoint.Scale / 100)
+        )
+        
+        return hitbox.Position + offset
+    end
+    
+    -- Hit Chance Calculation
+    local function CalculateHitChance()
+        local baseChance = RageBot.HitChance.Minimum
+        local randomFactor = math.random(-RageBot.HitChance.Precision, RageBot.HitChance.Precision)
+        return baseChance + randomFactor
+    end
+    
+    -- Main Aim Function
+    local function RageAim()
+        if not RageBot.Enabled then return end
+        
+        local target = FindBestTarget()
+        if not target then return end
+        
+        -- Check hit chance
+        if CalculateHitChance() < RageBot.HitChance.Minimum then
+            return
+        end
+        
+        -- Calculate aim point with multi-point
+        local aimPoint = CalculateMultiPoint(target.Hitbox)
+        
+        -- Silent Aim (set camera direction without moving mouse)
+        if RageBot.SilentAim then
+            local direction = (aimPoint - Camera.CFrame.Position).Unit
+            Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, Camera.CFrame.Position + direction)
+        else
+            -- Legacy aim (not recommended for rage)
+            -- This would move mouse directly
+        end
+        
+        -- Auto Fire
+        if RageBot.AutoFire.Mode == "OnHotkey" then
+            if game:GetService("UserInputService"):IsKeyDown(RageBot.AutoFire.Hotkey) then
+                -- Simulate mouse click for shooting
+                if target.Distance < RageBot.Damage.Minimum * 10 then
+                    -- Fire weapon logic would go here
+                end
+            end
+        end
+    end
+    
+    -- Apply Other Features
+    local function ApplyOtherFeatures()
+        if Other.RemoveRecoil then
+            -- Recoil removal logic
+        end
+        
+        if Other.RemoveSpread then
+            -- Spread removal logic  
+        end
+        
+        if Other.QuickStop then
+            -- Quick stop implementation
+        end
+    end
+    
+    -- Anti-Aimbot System
+    local function ApplyAntiAimbot()
+        if AntiAimbot.Dynamic then
+            -- Dynamic anti-aim would go here
+        end
+    end
+    
+    -- Main loop
+    game:GetService("RunService").RenderStepped:Connect(function()
+        RageAim()
+        ApplyOtherFeatures()
+        ApplyAntiAimbot()
+    end)
+end
+
+-- Initialize the Rage Bot
+InitializeRageBot()
+
+return {
+    RageBot = RageBot,
+    Other = Other,
+    AntiAimbot = AntiAimbot
+}
