@@ -1,10 +1,9 @@
--- Single Tap DT System - Clean Fixed Version
+-- Single Tap DT System - Final Fixed Version
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 
--- Переменные системы
 local currentBind = Enum.UserInputType.MouseButton1
 local listeningForBind = false
 local scriptActive = true
@@ -13,15 +12,12 @@ local lastActionTime = 0
 local actionCooldown = 0.3
 local isProcessing = false
 
--- Создание основного GUI
 local function createMainGUI()
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SingleTapSystem_" .. tostring(math.random(1, 10000))
+    screenGui.Name = "SingleTapSystem"
     screenGui.ResetOnSpawn = false
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-    -- Индикатор DT (слева экрана)
     local indicator = Instance.new("TextLabel")
     indicator.Name = "DTIndicator"
     indicator.Size = UDim2.new(0, 60, 0, 30)
@@ -31,8 +27,6 @@ local function createMainGUI()
     indicator.Text = "DT"
     indicator.Font = Enum.Font.GothamBold
     indicator.TextSize = 16
-    indicator.TextStrokeTransparency = 0
-    indicator.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     indicator.Visible = true
     indicator.Parent = screenGui
 
@@ -43,7 +37,6 @@ local function createMainGUI()
     return screenGui, indicator
 end
 
--- Создание меню настроек
 local function createMenuGUI(parentGui)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 300, 0, 200)
@@ -69,10 +62,6 @@ local function createMenuGUI(parentGui)
     title.TextSize = 14
     title.Parent = frame
 
-    local UICorner2 = Instance.new("UICorner")
-    UICorner2.CornerRadius = UDim.new(0, 8)
-    UICorner2.Parent = title
-
     local bindLabel = Instance.new("TextLabel")
     bindLabel.Size = UDim2.new(1, -20, 0, 25)
     bindLabel.Position = UDim2.new(0, 10, 0, 40)
@@ -93,10 +82,6 @@ local function createMenuGUI(parentGui)
     changeBind.Font = Enum.Font.Gotham
     changeBind.TextSize = 12
     changeBind.Parent = frame
-
-    local UICorner3 = Instance.new("UICorner")
-    UICorner3.CornerRadius = UDim.new(0, 4)
-    UICorner3.Parent = changeBind
 
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Size = UDim2.new(1, -20, 0, 25)
@@ -119,14 +104,9 @@ local function createMenuGUI(parentGui)
     closeButton.TextSize = 12
     closeButton.Parent = frame
 
-    local UICorner4 = Instance.new("UICorner")
-    UICorner4.CornerRadius = UDim.new(0, 4)
-    UICorner4.Parent = closeButton
-
     return frame, bindLabel, changeBind, statusLabel, closeButton
 end
 
--- Функция проверки на стены
 local function checkWallCollision(startPos, endPos)
     local character = LocalPlayer.Character
     if not character then return false, endPos end
@@ -144,7 +124,6 @@ local function checkWallCollision(startPos, endPos)
     return false, endPos
 end
 
--- Функция определения направления движения
 local function getMoveDirection()
     local character = LocalPlayer.Character
     if not character then return Vector3.new(0, 0, 0) end
@@ -163,7 +142,6 @@ local function getMoveDirection()
     return moveDirection.Unit
 end
 
--- Функция однократного перемещения
 local function performSingleMove()
     if isProcessing then return end
     isProcessing = true
@@ -218,11 +196,9 @@ local function performSingleMove()
     isProcessing = false
 end
 
--- Создаем GUI
 local mainScreenGui, dtIndicator = createMainGUI()
 local menuFrame, bindLabel, changeBind, statusLabel, closeButton = createMenuGUI(mainScreenGui)
 
--- Обработчик нажатия кнопки
 local function onInputBegan(input, gameProcessed)
     if gameProcessed or not scriptActive then return end
     if input.UserInputType == currentBind then
@@ -230,19 +206,16 @@ local function onInputBegan(input, gameProcessed)
     end
 end
 
--- Обработчик смены бинда
 changeBind.MouseButton1Click:Connect(function()
     listeningForBind = true
     bindLabel.Text = "Press new key..."
 end)
 
--- Обработчик закрытия
 closeButton.MouseButton1Click:Connect(function()
     menuFrame.Visible = false
     guiVisible = false
 end)
 
--- Обработчик ввода для меню
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
@@ -261,10 +234,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Подключаем обработчик ввода
 UserInputService.InputBegan:Connect(onInputBegan)
 
--- Защита от удаления GUI
 LocalPlayer.CharacterAdded:Connect(function()
     wait(1)
     if not mainScreenGui or not mainScreenGui.Parent then
@@ -274,6 +245,5 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 print("Single Tap DT System loaded!")
-print("DT indicator visible on left side")
-print("Press bind key ONCE for single teleport")
-print("Press DEL to open settings")
+print("Press LMB to teleport 3 studs")
+print("Press DEL for settings")
