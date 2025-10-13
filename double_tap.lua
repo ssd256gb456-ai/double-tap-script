@@ -61,7 +61,7 @@ title.Size = UDim2.new(1, 0, 0, 30)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Text = "Single Tap DT"
+title.Text = "PUZAN LUA"
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 title.Parent = frame
@@ -154,19 +154,44 @@ local function sendTrashTalk()
     
     local message = getRandomTrashTalk()
     
-    -- Открываем чат
-    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Slash, false, game)
-    wait(0.1)
+    -- Пробуем разные способы открыть чат
+    local chatOpenSuccess = false
+    
+    -- Способ 1: Пробуем найти и активировать поле ввода чата
+    pcall(function()
+        local coreGui = game:GetService("CoreGui")
+        local playerGui = LocalPlayer.PlayerGui
+        
+        -- Ищем TextBox для чата
+        for _, gui in pairs({coreGui, playerGui}) do
+            local textBox = gui:FindFirstChildWhichIsA("TextBox", true)
+            if textBox and textBox:IsA("TextBox") and textBox.Visible then
+                textBox:CaptureFocus()
+                chatOpenSuccess = true
+                break
+            end
+        end
+    end)
+    
+    -- Способ 2: Если не нашли, используем горячие клавиши
+    if not chatOpenSuccess then
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Slash, false, game)
+        wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Slash, false, game)
+        wait(0.1)
+    end
     
     -- Вводим сообщение
     for i = 1, #message do
         local char = message:sub(i, i)
         VirtualInputManager:SendKeyEvent(true, char, false, game)
-        wait(0.02)
+        VirtualInputManager:SendKeyEvent(false, char, false, game)
+        wait(0.01)
     end
     
     -- Отправляем сообщение
     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
     
     print("[TrashTalk]: " .. message)
 end
@@ -293,7 +318,7 @@ end)
 
 UserInputService.InputBegan:Connect(onInputBegan)
 
-print("DT System Ready")
+print("PUZAN LUA System Ready")
 print("LMB = Teleport 6 studs + TrashTalk")
 print("DEL = Toggle Menu")
-print("TrashTalk automatically types in chat")
+print("TrashTalk works with custom chat systems")
