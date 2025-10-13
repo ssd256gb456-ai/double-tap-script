@@ -1,4 +1,4 @@
--- Directional Move System
+-- Single Tap DT System
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -10,16 +10,41 @@ local listeningForBind = false
 local scriptActive = true
 local guiVisible = false
 local lastActionTime = 0
-local actionCooldown = 0.2
+local actionCooldown = 0.3
+local isProcessing = false
 
--- Создание GUI
-local function createGUI()
+-- Создание основного GUI
+local function createMainGUI()
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "DirectionalMove_" .. tostring(math.random(1, 10000))
+    screenGui.Name = "SingleTapSystem_" .. tostring(math.random(1, 10000))
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+    -- Индикатор DT (слева экрана)
+    local dtIndicator = Instance.new("TextLabel")
+    dtIndicator.Name = "DTIndicator"
+    dtIndicator.Size = UDim2.new(0, 60, 0, 30)
+    dtIndicator.Position = UDim2.new(0, 10, 0, 10)
+    dtIndicator.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    dtIndicator.TextColor3 = Color3.fromRGB(255, 255, 255)
+    dtIndicator.Text = "DT"
+    dtIndicator.Font = Enum.Font.GothamBold
+    dtIndicator.TextSize = 16
+    dtIndicator.TextStrokeTransparency = 0
+    dtIndicator.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    dtIndicator.Visible = true
+    dtIndicator.Parent = screenGui
+
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 6)
+    UICorner.Parent = dtIndicator
+
+    return screenGui, dtIndicator
+end
+
+-- Создание меню настроек
+local function createMenuGUI(parentGui)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 300, 0, 200)
     frame.Position = UDim2.new(0.5, -150, 0.5, -100)
@@ -28,7 +53,7 @@ local function createGUI()
     frame.Visible = false
     frame.Active = true
     frame.Draggable = true
-    frame.Parent = screenGui
+    frame.Parent = parentGui
 
     local UICorner = Instance.new("UICorner")
     UICorner.CornerRadius = UDim.new(0, 8)
@@ -39,7 +64,7 @@ local function createGUI()
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Text = "Directional Move"
+    title.Text = "Single Tap DT"
     title.Font = Enum.Font.GothamBold
     title.TextSize = 14
     title.Parent = frame
@@ -98,7 +123,7 @@ local function createGUI()
     UICorner4.CornerRadius = UDim.new(0, 4)
     UICorner4.Parent = closeButton
 
-    return screenGui, frame, bindLabel, changeBind, statusLabel, closeButton
+    return frame, bindLabel, changeBind, statusLabel, closeButton
 end
 
 -- Функция проверки на стены
@@ -137,30 +162,58 @@ local function getMoveDirection()
     return moveDirection.Unit
 end
 
--- Функция безопасного перемещения
-local function performDirectionalMove()
+-- Функция анимации индикатора
+local function animateDTIndicator()
+    if dtIndicator then
+        -- Мигание при активации
+        dtIndicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        wait(0.1)
+        dtIndicator.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    end
+end
+
+-- Функция однократного перемещения
+local function performSingleMove()
+    -- Защита от повторного вызова
+    if isProcessing then
+        return
+    end
+    
+    isProcessing = true
+    
     local currentTime = tick()
     
     -- Защита от спама
     if currentTime - lastActionTime < actionCooldown then
+        isProcessing = false
         return
     end
     
     lastActionTime = currentTime
     
     local character = LocalPlayer.Character
-    if not character then return end
+    if not character then
+        isProcessing = false
+        return
+    end
     
     local humanoid = character:FindFirstChild("Humanoid")
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     
-    if not humanoid or not rootPart then return end
+    if not humanoid or not rootPart then
+        isProcessing = false
+        return
+    end
+    
+    -- Анимируем индикатор
+    animateDTIndicator()
     
     -- Получаем направление движения
     local direction = getMoveDirection()
     
     -- Если направление нулевое, выходим
     if direction.Magnitude < 0.1 then
+        isProcessing = false
         return
     end
     
@@ -179,30 +232,31 @@ local function performDirectionalMove()
         local moveVector = (hitPosition - startPos)
         local moveDistance = math.max(0, moveVector.Magnitude - safeDistance)
         
-        if moveDistance > 0.5 then  -- Минимальная дистанция для перемещения
+        if moveDistance > 0.5 then
             local safePosition = startPos + direction * moveDistance
             rootPart.CFrame = CFrame.new(safePosition, safePosition + direction)
-            print("Moved to wall: " .. tostring(math.floor(moveDistance * 10)/10) .. " studs")
-        else
-            print("Too close to wall")
         end
     else
         -- Если стены нет, двигаемся на маленькое расстояние
         rootPart.CFrame = CFrame.new(endPos, endPos + direction)
-        print("Directional move: 3 studs")
     end
+    
+    -- Сбрасываем флаг обработки
+    wait(0.1)
+    isProcessing = false
 end
 
 -- Создаем GUI
-local screenGui, frame, bindLabel, changeBind, statusLabel, closeButton = createGUI()
+local mainScreenGui, dtIndicator = createMainGUI()
+local menuFrame, bindLabel, changeBind, statusLabel, closeButton = createMenuGUI(mainScreenGui)
 
 -- Обработчик нажатия кнопки
 local function onInputBegan(input, gameProcessed)
     if gameProcessed or not scriptActive then return end
     
     if input.UserInputType == currentBind then
-        -- Выполняем перемещение только при нажатии
-        performDirectionalMove()
+        -- Выполняем перемещение только один раз при нажатии
+        performSingleMove()
     end
 end
 
@@ -214,7 +268,7 @@ end)
 
 -- Обработчик закрытия
 closeButton.MouseButton1Click:Connect(function()
-    frame.Visible = false
+    menuFrame.Visible = false
     guiVisible = false
 end)
 
@@ -225,7 +279,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     -- Открытие/закрытие меню по DEL
     if input.KeyCode == Enum.KeyCode.Delete then
         guiVisible = not guiVisible
-        frame.Visible = guiVisible
+        menuFrame.Visible = guiVisible
     end
     
     -- Обработка смены бинда
@@ -234,21 +288,3 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         local bindName = tostring(input.KeyCode or input.UserInputType):gsub("Enum.%a+%.", "")
         bindLabel.Text = "Current Bind: " .. bindName
         listeningForBind = false
-        wait(0.5)
-        bindLabel.Text = "Bind changed to: " .. bindName
-    end
-end)
-
--- Подключаем обработчик ввода
-UserInputService.InputBegan:Connect(onInputBegan)
-
--- Защита от удаления GUI
-LocalPlayer.CharacterAdded:Connect(function()
-    wait(1)
-    if not screenGui or not screenGui.Parent then
-        screenGui, frame, bindLabel, changeBind, statusLabel, closeButton = createGUI()
-    end
-end)
-
-print("Directional Move System loaded! Press DEL to open menu.")
-print("Press bind key to move 3 studs in your movement direction.")
