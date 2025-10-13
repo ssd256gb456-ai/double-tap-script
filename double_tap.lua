@@ -1,19 +1,19 @@
--- Double Tap Script with Protected GUI
+-- Double Tap Script - Hold to Activate with Wall Check
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 -- Переменные системы
-local doubleTapTime = 0.3
-local lastTapTime = 0
-local tapCount = 0
 local currentBind = Enum.UserInputType.MouseButton1
 local listeningForBind = false
 local scriptActive = true
 local guiVisible = false
+local isKeyPressed = false
+local activeConnection = nil
 
--- Создание защищенного GUI
+-- Создание GUI
 local function createGUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "DoubleTapGUI_" .. tostring(math.random(1, 10000))
@@ -40,7 +40,7 @@ local function createGUI()
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Text = "Double Tap System"
+    title.Text = "Hold System"
     title.Font = Enum.Font.GothamBold
     title.TextSize = 14
     title.Parent = frame
@@ -54,7 +54,7 @@ local function createGUI()
     bindLabel.Position = UDim2.new(0, 10, 0, 40)
     bindLabel.BackgroundTransparency = 1
     bindLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    bindLabel.Text = "Текущий бинд: ЛКМ"
+    bindLabel.Text = "Current Bind: LMB"
     bindLabel.Font = Enum.Font.Gotham
     bindLabel.TextSize = 12
     bindLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -65,7 +65,7 @@ local function createGUI()
     changeBind.Position = UDim2.new(0, 10, 0, 70)
     changeBind.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     changeBind.TextColor3 = Color3.fromRGB(255, 255, 255)
-    changeBind.Text = "Сменить бинд"
+    changeBind.Text = "Change Bind"
     changeBind.Font = Enum.Font.Gotham
     changeBind.TextSize = 12
     changeBind.Parent = frame
@@ -79,7 +79,7 @@ local function createGUI()
     statusLabel.Position = UDim2.new(0, 10, 0, 110)
     statusLabel.BackgroundTransparency = 1
     statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    statusLabel.Text = "Статус: Активно"
+    statusLabel.Text = "Status: Active"
     statusLabel.Font = Enum.Font.Gotham
     statusLabel.TextSize = 12
     statusLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -90,7 +90,7 @@ local function createGUI()
     closeButton.Position = UDim2.new(0, 10, 0, 140)
     closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
     closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeButton.Text = "Закрыть"
+    closeButton.Text = "Close"
     closeButton.Font = Enum.Font.Gotham
     closeButton.TextSize = 12
     closeButton.Parent = frame
@@ -102,40 +102,91 @@ local function createGUI()
     return screenGui, frame, bindLabel, changeBind, statusLabel, closeButton
 end
 
+-- Функция проверки на стены
+local function checkWallCollision(startPos, endPos)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    
+    local raycastResult = Workspace:Raycast(startPos, (endPos - startPos), raycastParams)
+    
+    if raycastResult then
+        return true, raycastResult.Position
+    end
+    
+    return false, endPos
+end
+
+-- Функция активации способности
+local function activateAbility()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then return end
+    
+    -- Получаем направление взгляда
+    local direction = rootPart.CFrame.LookVector
+    
+    -- Начальная позиция
+    local startPos = rootPart.Position
+    
+    -- Конечная позиция (10 studs вперед)
+    local endPos = startPos + direction * 10
+    
+    -- Проверяем столкновение со стенами
+    local hitWall, hitPosition = checkWallCollision(startPos, endPos)
+    
+    if hitWall then
+        -- Если есть стена, двигаемся до стены минус небольшой отступ
+        local safeDistance = 2
+        local moveVector = (hitPosition - startPos)
+        local moveDistance = math.max(0, moveVector.Magnitude - safeDistance)
+        local safePosition = startPos + direction * moveDistance
+        rootPart.CFrame = CFrame.new(safePosition, safePosition + direction)
+        print("Moved to wall: " .. tostring(moveDistance))
+    else
+        -- Если стены нет, двигаемся полностью
+        rootPart.CFrame = CFrame.new(endPos, endPos + direction)
+        print("Moved full distance")
+    end
+end
+
 -- Создаем GUI
 local screenGui, frame, bindLabel, changeBind, statusLabel, closeButton = createGUI()
 
--- Функция двойного нажатия
+-- Обработчик нажатия кнопки
 local function onInputBegan(input, gameProcessed)
     if gameProcessed or not scriptActive then return end
     
-    if input.UserInputType == currentBind then
-        local currentTime = tick()
+    if input.UserInputType == currentBind and not isKeyPressed then
+        isKeyPressed = true
+        print("Key pressed - Ability active")
         
-        if (currentTime - lastTapTime) < doubleTapTime then
-            tapCount = tapCount + 1
-        else
-            tapCount = 1
-        end
-        
-        lastTapTime = currentTime
-        
-        if tapCount == 2 then
-            -- ТВОЕ ДЕЙСТВИЕ ПРИ АКТИВАЦИИ
-            print("Double Tap Activated!")
-            
-            -- Пример: телепортация вперед
-            local character = LocalPlayer.Character
-            if character then
-                local humanoid = character:FindFirstChild("Humanoid")
-                local rootPart = character:FindFirstChild("HumanoidRootPart")
-                if humanoid and rootPart then
-                    local direction = rootPart.CFrame.LookVector
-                    rootPart.CFrame = rootPart.CFrame + direction * 10
-                end
+        -- Запускаем цикл пока кнопка нажата
+        activeConnection = RunService.Heartbeat:Connect(function()
+            if isKeyPressed then
+                activateAbility()
+            else
+                activeConnection:Disconnect()
             end
-            
-            tapCount = 0
+        end)
+    end
+end
+
+-- Обработчик отпускания кнопки
+local function onInputEnded(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.UserInputType == currentBind then
+        isKeyPressed = false
+        print("Key released - Ability deactivated")
+        
+        if activeConnection then
+            activeConnection:Disconnect()
+            activeConnection = nil
         end
     end
 end
@@ -143,7 +194,7 @@ end
 -- Обработчик смены бинда
 changeBind.MouseButton1Click:Connect(function()
     listeningForBind = true
-    bindLabel.Text = "Нажмите новую клавишу..."
+    bindLabel.Text = "Press new key..."
 end)
 
 -- Обработчик закрытия
@@ -166,15 +217,16 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if listeningForBind then
         currentBind = input.UserInputType
         local bindName = tostring(input.KeyCode or input.UserInputType):gsub("Enum.%a+%.", "")
-        bindLabel.Text = "Текущий бинд: " .. bindName
+        bindLabel.Text = "Current Bind: " .. bindName
         listeningForBind = false
         wait(0.5)
-        bindLabel.Text = "Бинд изменен на: " .. bindName
+        bindLabel.Text = "Bind changed to: " .. bindName
     end
 end)
 
--- Подключение основной функции
+-- Подключаем обработчики ввода
 UserInputService.InputBegan:Connect(onInputBegan)
+UserInputService.InputEnded:Connect(onInputEnded)
 
 -- Защита от удаления GUI
 LocalPlayer.CharacterAdded:Connect(function()
@@ -184,5 +236,5 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
-print("Double Tap System loaded! Press DEL to open menu.")
-warn("GUI created successfully. Use DELETE key to toggle menu.")
+print("Hold System loaded! Press DEL to open menu.")
+print("Hold the bind key to activate, release to deactivate.")
