@@ -80,80 +80,61 @@ closeButton.Parent = frame
 local function checkWallCollision(startPos, endPos)
     local character = LocalPlayer.Character
     if not character then return false, endPos end
-    
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
     raycastParams.FilterDescendantsInstances = {character}
-    
     local raycastResult = Workspace:Raycast(startPos, (endPos - startPos), raycastParams)
-    
     if raycastResult then
         return true, raycastResult.Position
     end
-    
     return false, endPos
 end
 
 local function getMoveDirection()
     local character = LocalPlayer.Character
     if not character then return Vector3.new(0, 0, 0) end
-    
     local humanoid = character:FindFirstChild("Humanoid")
     local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
     if not humanoid or not rootPart then return Vector3.new(0, 0, 0) end
-    
     local moveDirection = humanoid.MoveDirection
-    
     if moveDirection.Magnitude < 0.1 then
         moveDirection = rootPart.CFrame.LookVector
     end
-    
     return moveDirection.Unit
 end
 
 local function performSingleMove()
     if isProcessing then return end
     isProcessing = true
-    
     local currentTime = tick()
     if currentTime - lastActionTime < actionCooldown then
         isProcessing = false
         return
     end
-    
     lastActionTime = currentTime
-    
     local character = LocalPlayer.Character
     if not character then
         isProcessing = false
         return
     end
-    
     local humanoid = character:FindFirstChild("Humanoid")
     local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
     if not humanoid or not rootPart then
         isProcessing = false
         return
     end
-    
     local direction = getMoveDirection()
     if direction.Magnitude < 0.1 then
         isProcessing = false
         return
     end
-    
     local startPos = rootPart.Position
     local endPos = startPos + direction * 3
-    
     local hitWall, hitPosition = checkWallCollision(startPos, endPos)
-    
     if hitWall then
         local safeDistance = 1.0
         local moveVector = (hitPosition - startPos)
         local moveDistance = math.max(0, moveVector.Magnitude - safeDistance)
-        
         if moveDistance > 0.5 then
             local safePosition = startPos + direction * moveDistance
             rootPart.CFrame = CFrame.new(safePosition, safePosition + direction)
@@ -161,7 +142,6 @@ local function performSingleMove()
     else
         rootPart.CFrame = CFrame.new(endPos, endPos + direction)
     end
-    
     wait(0.1)
     isProcessing = false
 end
@@ -184,11 +164,9 @@ end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    
     if input.KeyCode == Enum.KeyCode.Delete then
         frame.Visible = not frame.Visible
     end
-    
     if listeningForBind then
         currentBind = input.UserInputType
         local bindName = tostring(input.KeyCode or input.UserInputType):gsub("Enum.%a+%.", "")
