@@ -2,7 +2,6 @@ local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local currentBind = Enum.UserInputType.MouseButton1
 local listeningForBind = false
@@ -10,6 +9,7 @@ local lastActionTime = 0
 local actionCooldown = 0.3
 local isProcessing = false
 local trashTalkEnabled = false
+local spamThread = nil
 
 local trashTalkPhrases = {
     "fuckpuzan",
@@ -149,51 +149,41 @@ local function getRandomTrashTalk()
     return trashTalkPhrases[math.random(1, #trashTalkPhrases)]
 end
 
-local function sendTrashTalk()
-    if not trashTalkEnabled then return end
-    
-    local message = getRandomTrashTalk()
-    
-    -- Пробуем разные способы открыть чат
-    local chatOpenSuccess = false
-    
-    -- Способ 1: Пробуем найти и активировать поле ввода чата
-    pcall(function()
-        local coreGui = game:GetService("CoreGui")
-        local playerGui = LocalPlayer.PlayerGui
-        
-        -- Ищем TextBox для чата
-        for _, gui in pairs({coreGui, playerGui}) do
-            local textBox = gui:FindFirstChildWhichIsA("TextBox", true)
-            if textBox and textBox:IsA("TextBox") and textBox.Visible then
-                textBox:CaptureFocus()
-                chatOpenSuccess = true
-                break
+local function sendToChat(message)
+    -- Пытаемся отправить через новый чат
+    local success1 = pcall(function()
+        local TextChatService = game:GetService("TextChatService")
+        if TextChatService then
+            local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+            if channel then
+                channel:SendAsync(message)
+                return true
             end
         end
+        return false
     end)
     
-    -- Способ 2: Если не нашли, используем горячие клавиши
-    if not chatOpenSuccess then
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Slash, false, game)
-        wait(0.05)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Slash, false, game)
-        wait(0.1)
+    -- Если новый чат не сработал, пробуем старый
+    if not success1 then
+        pcall(function()
+            game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest"):FireServer(message, "All")
+        end)
     end
-    
-    -- Вводим сообщение
-    for i = 1, #message do
-        local char = message:sub(i, i)
-        VirtualInputManager:SendKeyEvent(true, char, false, game)
-        VirtualInputManager:SendKeyEvent(false, char, false, game)
-        wait(0.01)
+end
+
+local function startSpam()
+    while trashTalkEnabled do
+        local message = getRandomTrashTalk()
+        sendToChat(message)
+        print("[TrashTalk SPAM]: " .. message)
+        wait(0.5) -- Интервал между сообщениями
     end
-    
-    -- Отправляем сообщение
-    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-    
-    print("[TrashTalk]: " .. message)
+end
+
+local function stopSpam()
+    if spamThread then
+        spamThread = nil
+    end
 end
 
 local function checkWallCollision(startPos, endPos)
@@ -235,8 +225,6 @@ local function performSingleMove()
     indicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
     wait(0.1)
     indicator.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    
-    sendTrashTalk()
     
     local character = LocalPlayer.Character
     if not character then
@@ -290,9 +278,13 @@ trashTalkButton.MouseButton1Click:Connect(function()
     if trashTalkEnabled then
         trashTalkButton.Text = "TrashTalk: ON"
         trashTalkButton.BackgroundColor3 = Color3.fromRGB(60, 160, 60)
+        -- Запускаем спам
+        spamThread = task.spawn(startSpam)
     else
         trashTalkButton.Text = "TrashTalk: OFF"
         trashTalkButton.BackgroundColor3 = Color3.fromRGB(80, 80, 160)
+        -- Останавливаем спам
+        stopSpam()
     end
 end)
 
@@ -319,6 +311,6 @@ end)
 UserInputService.InputBegan:Connect(onInputBegan)
 
 print("PUZAN LUA System Ready")
-print("LMB = Teleport 6 studs + TrashTalk")
+print("LMB = Teleport 6 studs")
 print("DEL = Toggle Menu")
-print("TrashTalk works with custom chat systems")
+print("TrashTalk SPAM enabled - sends messages every 0.5 seconds")
