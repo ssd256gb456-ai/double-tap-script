@@ -2,6 +2,7 @@ local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
+local TextChatService = game:GetService("TextChatService")
 
 local currentBind = Enum.UserInputType.MouseButton1
 local listeningForBind = false
@@ -149,10 +150,30 @@ local function getRandomTrashTalk()
 end
 
 local function sendTrashTalk()
-    if trashTalkEnabled then
-        local message = getRandomTrashTalk()
-        print("[TrashTalk]: " .. message)
+    if not trashTalkEnabled then return end
+    
+    local message = getRandomTrashTalk()
+    
+    -- Попытка через новый TextChatService
+    local success, result = pcall(function()
+        if TextChatService then
+            local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+            if channel then
+                channel:SendAsync(message)
+                return true
+            end
+        end
+        return false
+    end)
+    
+    -- Если новый чат не работает, пробуем старый
+    if not success then
+        pcall(function()
+            game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest"):FireServer(message, "All")
+        end)
     end
+    
+    print("[TrashTalk]: " .. message)
 end
 
 local function checkWallCollision(startPos, endPos)
@@ -280,4 +301,4 @@ UserInputService.InputBegan:Connect(onInputBegan)
 print("DT System Ready")
 print("LMB = Teleport 6 studs")
 print("DEL = Toggle Menu")
-print("TrashTalk prints to console when enabled")
+print("TrashTalk works with both chat systems")
