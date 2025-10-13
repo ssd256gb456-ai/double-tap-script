@@ -2,7 +2,7 @@ local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
-local TextChatService = game:GetService("TextChatService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local currentBind = Enum.UserInputType.MouseButton1
 local listeningForBind = false
@@ -154,24 +154,19 @@ local function sendTrashTalk()
     
     local message = getRandomTrashTalk()
     
-    -- Попытка через новый TextChatService
-    local success, result = pcall(function()
-        if TextChatService then
-            local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-            if channel then
-                channel:SendAsync(message)
-                return true
-            end
-        end
-        return false
-    end)
+    -- Открываем чат
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Slash, false, game)
+    wait(0.1)
     
-    -- Если новый чат не работает, пробуем старый
-    if not success then
-        pcall(function()
-            game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest"):FireServer(message, "All")
-        end)
+    -- Вводим сообщение
+    for i = 1, #message do
+        local char = message:sub(i, i)
+        VirtualInputManager:SendKeyEvent(true, char, false, game)
+        wait(0.02)
     end
+    
+    -- Отправляем сообщение
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
     
     print("[TrashTalk]: " .. message)
 end
@@ -299,6 +294,6 @@ end)
 UserInputService.InputBegan:Connect(onInputBegan)
 
 print("DT System Ready")
-print("LMB = Teleport 6 studs")
+print("LMB = Teleport 6 studs + TrashTalk")
 print("DEL = Toggle Menu")
-print("TrashTalk works with both chat systems")
+print("TrashTalk automatically types in chat")
