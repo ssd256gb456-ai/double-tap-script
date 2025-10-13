@@ -1,4 +1,4 @@
--- Double Tap Script - Hold to Activate with Wall Check
+-- Hold System - Small Movement
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -11,12 +11,11 @@ local listeningForBind = false
 local scriptActive = true
 local guiVisible = false
 local isKeyPressed = false
-local activeConnection = nil
 
 -- Создание GUI
 local function createGUI()
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "DoubleTapGUI_" .. tostring(math.random(1, 10000))
+    screenGui.Name = "HoldSystem_" .. tostring(math.random(1, 10000))
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -40,7 +39,7 @@ local function createGUI()
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Text = "Hold System"
+    title.Text = "Small Move System"
     title.Font = Enum.Font.GothamBold
     title.TextSize = 14
     title.Parent = frame
@@ -117,8 +116,8 @@ local function checkWallCollision(startPos, endPos)
     return false, endPos
 end
 
--- Функция активации способности
-local function activateAbility()
+-- Функция маленького перемещения
+local function performSmallMove()
     local character = LocalPlayer.Character
     if not character then return end
     
@@ -133,24 +132,24 @@ local function activateAbility()
     -- Начальная позиция
     local startPos = rootPart.Position
     
-    -- Конечная позиция (10 studs вперед)
-    local endPos = startPos + direction * 10
+    -- Конечная позиция (маленькое расстояние - 2 studs)
+    local endPos = startPos + direction * 2
     
     -- Проверяем столкновение со стенами
     local hitWall, hitPosition = checkWallCollision(startPos, endPos)
     
     if hitWall then
-        -- Если есть стена, двигаемся до стены минус небольшой отступ
-        local safeDistance = 2
+        -- Если есть стена, двигаемся до стены минус маленький отступ
+        local safeDistance = 0.5
         local moveVector = (hitPosition - startPos)
         local moveDistance = math.max(0, moveVector.Magnitude - safeDistance)
         local safePosition = startPos + direction * moveDistance
         rootPart.CFrame = CFrame.new(safePosition, safePosition + direction)
-        print("Moved to wall: " .. tostring(moveDistance))
+        print("Small move to wall: " .. tostring(math.floor(moveDistance * 10)/10) .. " studs")
     else
-        -- Если стены нет, двигаемся полностью
+        -- Если стены нет, двигаемся на маленькое расстояние
         rootPart.CFrame = CFrame.new(endPos, endPos + direction)
-        print("Moved full distance")
+        print("Small move: 2 studs")
     end
 end
 
@@ -163,16 +162,10 @@ local function onInputBegan(input, gameProcessed)
     
     if input.UserInputType == currentBind and not isKeyPressed then
         isKeyPressed = true
-        print("Key pressed - Ability active")
+        print("Key pressed - Small move activated")
         
-        -- Запускаем цикл пока кнопка нажата
-        activeConnection = RunService.Heartbeat:Connect(function()
-            if isKeyPressed then
-                activateAbility()
-            else
-                activeConnection:Disconnect()
-            end
-        end)
+        -- Выполняем маленькое перемещение
+        performSmallMove()
     end
 end
 
@@ -182,12 +175,7 @@ local function onInputEnded(input, gameProcessed)
     
     if input.UserInputType == currentBind then
         isKeyPressed = false
-        print("Key released - Ability deactivated")
-        
-        if activeConnection then
-            activeConnection:Disconnect()
-            activeConnection = nil
-        end
+        print("Key released - Ready for next small move")
     end
 end
 
@@ -236,5 +224,5 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
-print("Hold System loaded! Press DEL to open menu.")
-print("Hold the bind key to activate, release to deactivate.")
+print("Small Move System loaded! Press DEL to open menu.")
+print("Press bind key for small move (2 studs forward).")
