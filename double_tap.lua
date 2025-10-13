@@ -8,6 +8,16 @@ local listeningForBind = false
 local lastActionTime = 0
 local actionCooldown = 0.3
 local isProcessing = false
+local trashTalkEnabled = false
+
+local trashTalkPhrases = {
+    "fuckpuzan",
+    "puzan lua",
+    "by puzan team", 
+    "puzo",
+    "puzan 1488",
+    "puzan"
+}
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "SingleTapSystem"
@@ -32,8 +42,8 @@ UICorner.CornerRadius = UDim.new(0, 6)
 UICorner.Parent = indicator
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 200)
-frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+frame.Size = UDim2.new(0, 300, 0, 230)
+frame.Position = UDim2.new(0.5, -150, 0.5, -115)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BorderSizePixel = 0
 frame.Visible = false
@@ -100,15 +110,29 @@ distanceLabel.Size = UDim2.new(1, -20, 0, 25)
 distanceLabel.Position = UDim2.new(0, 10, 0, 135)
 distanceLabel.BackgroundTransparency = 1
 distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-distanceLabel.Text = "Distance: 4 studs"
+distanceLabel.Text = "Distance: 6 studs"
 distanceLabel.Font = Enum.Font.Gotham
 distanceLabel.TextSize = 12
 distanceLabel.TextXAlignment = Enum.TextXAlignment.Left
 distanceLabel.Parent = frame
 
+local trashTalkButton = Instance.new("TextButton")
+trashTalkButton.Size = UDim2.new(1, -20, 0, 30)
+trashTalkButton.Position = UDim2.new(0, 10, 0, 165)
+trashTalkButton.BackgroundColor3 = Color3.fromRGB(80, 80, 160)
+trashTalkButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+trashTalkButton.Text = "TrashTalk: OFF"
+trashTalkButton.Font = Enum.Font.Gotham
+trashTalkButton.TextSize = 12
+trashTalkButton.Parent = frame
+
+local trashCorner = Instance.new("UICorner")
+trashCorner.CornerRadius = UDim.new(0, 4)
+trashCorner.Parent = trashTalkButton
+
 local closeButton = Instance.new("TextButton")
 closeButton.Size = UDim2.new(1, -20, 0, 30)
-closeButton.Position = UDim2.new(0, 10, 0, 165)
+closeButton.Position = UDim2.new(0, 10, 0, 200)
 closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeButton.Text = "Close Menu"
@@ -119,6 +143,17 @@ closeButton.Parent = frame
 local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 4)
 closeCorner.Parent = closeButton
+
+local function getRandomTrashTalk()
+    return trashTalkPhrases[math.random(1, #trashTalkPhrases)]
+end
+
+local function sendTrashTalk()
+    if trashTalkEnabled then
+        local message = getRandomTrashTalk()
+        game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
+    end
+end
 
 local function checkWallCollision(startPos, endPos)
     local character = LocalPlayer.Character
@@ -160,6 +195,8 @@ local function performSingleMove()
     wait(0.1)
     indicator.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     
+    sendTrashTalk()
+    
     local character = LocalPlayer.Character
     if not character then
         isProcessing = false
@@ -177,7 +214,7 @@ local function performSingleMove()
         return
     end
     local startPos = rootPart.Position
-    local endPos = startPos + direction * 4
+    local endPos = startPos + direction * 6
     local hitWall, hitPosition = checkWallCollision(startPos, endPos)
     if hitWall then
         local safeDistance = 1.0
@@ -207,6 +244,17 @@ changeBind.MouseButton1Click:Connect(function()
     statusLabel.Text = "Status: Listening for bind"
 end)
 
+trashTalkButton.MouseButton1Click:Connect(function()
+    trashTalkEnabled = not trashTalkEnabled
+    if trashTalkEnabled then
+        trashTalkButton.Text = "TrashTalk: ON"
+        trashTalkButton.BackgroundColor3 = Color3.fromRGB(60, 160, 60)
+    else
+        trashTalkButton.Text = "TrashTalk: OFF"
+        trashTalkButton.BackgroundColor3 = Color3.fromRGB(80, 80, 160)
+    end
+end)
+
 closeButton.MouseButton1Click:Connect(function()
     frame.Visible = false
 end)
@@ -230,5 +278,6 @@ end)
 UserInputService.InputBegan:Connect(onInputBegan)
 
 print("DT System Ready")
-print("LMB = Teleport 4 studs")
+print("LMB = Teleport 6 studs")
 print("DEL = Toggle Menu")
+print("TrashTalk system added")
