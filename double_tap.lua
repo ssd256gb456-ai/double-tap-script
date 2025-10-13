@@ -1,4 +1,4 @@
--- Single Tap DT System - Fixed Version
+-- Single Tap DT System - Clean Fixed Version
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -12,7 +12,6 @@ local guiVisible = false
 local lastActionTime = 0
 local actionCooldown = 0.3
 local isProcessing = false
-local dtIndicator = nil
 
 -- Создание основного GUI
 local function createMainGUI()
@@ -129,11 +128,12 @@ end
 
 -- Функция проверки на стены
 local function checkWallCollision(startPos, endPos)
+    local character = LocalPlayer.Character
+    if not character then return false, endPos end
+    
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    if LocalPlayer.Character then
-        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-    end
+    raycastParams.FilterDescendantsInstances = {character}
     
     local raycastResult = Workspace:Raycast(startPos, (endPos - startPos), raycastParams)
     
@@ -154,10 +154,8 @@ local function getMoveDirection()
     
     if not humanoid or not rootPart then return Vector3.new(0, 0, 0) end
     
-    -- Получаем направление движения от Humanoid
     local moveDirection = humanoid.MoveDirection
     
-    -- Если персонаж не двигается, используем направление взгляда
     if moveDirection.Magnitude < 0.1 then
         moveDirection = rootPart.CFrame.LookVector
     end
@@ -165,40 +163,18 @@ local function getMoveDirection()
     return moveDirection.Unit
 end
 
--- Функция анимации индикатора
-local function animateDTIndicator()
-    if dtIndicator then
-        -- Сохраняем оригинальный цвет
-        local originalColor = dtIndicator.BackgroundColor3
-        
-        -- Мигание при активации
-        dtIndicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        wait(0.1)
-        dtIndicator.BackgroundColor3 = originalColor
-    end
-end
-
 -- Функция однократного перемещения
 local function performSingleMove()
-    -- Защита от повторного вызова
-    if isProcessing then
-        return
-    end
-    
+    if isProcessing then return end
     isProcessing = true
     
     local currentTime = tick()
-    
-    -- Защита от спама
     if currentTime - lastActionTime < actionCooldown then
         isProcessing = false
         return
     end
     
     lastActionTime = currentTime
-    
-    -- Анимируем индикатор
-    animateDTIndicator()
     
     local character = LocalPlayer.Character
     if not character then
@@ -214,26 +190,18 @@ local function performSingleMove()
         return
     end
     
-    -- Получаем направление движения
     local direction = getMoveDirection()
-    
-    -- Если направление нулевое, выходим
     if direction.Magnitude < 0.1 then
         isProcessing = false
         return
     end
     
-    -- Начальная позиция
     local startPos = rootPart.Position
-    
-    -- Конечная позиция (маленькое расстояние - 3 studs)
     local endPos = startPos + direction * 3
     
-    -- Проверяем столкновение со стенами
     local hitWall, hitPosition = checkWallCollision(startPos, endPos)
     
     if hitWall then
-        -- Если есть стена, двигаемся до стены минус отступ
         local safeDistance = 1.0
         local moveVector = (hitPosition - startPos)
         local moveDistance = math.max(0, moveVector.Magnitude - safeDistance)
@@ -243,26 +211,21 @@ local function performSingleMove()
             rootPart.CFrame = CFrame.new(safePosition, safePosition + direction)
         end
     else
-        -- Если стены нет, двигаемся на маленькое расстояние
         rootPart.CFrame = CFrame.new(endPos, endPos + direction)
     end
     
-    -- Сбрасываем флаг обработки
     wait(0.1)
     isProcessing = false
 end
 
 -- Создаем GUI
-local mainScreenGui, indicator = createMainGUI()
-dtIndicator = indicator -- Сохраняем ссылку на индикатор
+local mainScreenGui, dtIndicator = createMainGUI()
 local menuFrame, bindLabel, changeBind, statusLabel, closeButton = createMenuGUI(mainScreenGui)
 
 -- Обработчик нажатия кнопки
 local function onInputBegan(input, gameProcessed)
     if gameProcessed or not scriptActive then return end
-    
     if input.UserInputType == currentBind then
-        -- Выполняем перемещение только один раз при нажатии
         performSingleMove()
     end
 end
@@ -279,17 +242,15 @@ closeButton.MouseButton1Click:Connect(function()
     guiVisible = false
 end)
 
--- Обработчик ввода для биндов и меню
+-- Обработчик ввода для меню
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
-    -- Открытие/закрытие меню по DEL
     if input.KeyCode == Enum.KeyCode.Delete then
         guiVisible = not guiVisible
         menuFrame.Visible = guiVisible
     end
     
-    -- Обработка смены бинда
     if listeningForBind then
         currentBind = input.UserInputType
         local bindName = tostring(input.KeyCode or input.UserInputType):gsub("Enum.%a+%.", "")
@@ -307,8 +268,7 @@ UserInputService.InputBegan:Connect(onInputBegan)
 LocalPlayer.CharacterAdded:Connect(function()
     wait(1)
     if not mainScreenGui or not mainScreenGui.Parent then
-        mainScreenGui, indicator = createMainGUI()
-        dtIndicator = indicator
+        mainScreenGui, dtIndicator = createMainGUI()
         menuFrame, bindLabel, changeBind, statusLabel, closeButton = createMenuGUI(mainScreenGui)
     end
 end)
