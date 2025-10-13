@@ -1,84 +1,204 @@
-local UIS = game:GetService("UserInputService")
+local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
-local WS = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
 
-local bind = Enum.UserInputType.MouseButton1
-local lastTime = 0
-local cooldown = 0.3
-local busy = false
+local currentBind = Enum.UserInputType.MouseButton1
+local listeningForBind = false
+local lastActionTime = 0
+local actionCooldown = 0.3
+local isProcessing = false
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "DT"
-gui.Parent = LP:WaitForChild("PlayerGui")
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SingleTapSystem"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-local dtText = Instance.new("TextLabel")
-dtText.Size = UDim2.new(0, 60, 0, 30)
-dtText.Position = UDim2.new(0, 10, 0, 10)
-dtText.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
-dtText.TextColor3 = Color3.new(1, 1, 1)
-dtText.Text = "DT"
-dtText.Font = Enum.Font.GothamBold
-dtText.TextSize = 16
-dtText.Parent = gui
+local indicator = Instance.new("TextLabel")
+indicator.Name = "DTIndicator"
+indicator.Size = UDim2.new(0, 60, 0, 30)
+indicator.Position = UDim2.new(0, 10, 0, 10)
+indicator.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+indicator.TextColor3 = Color3.fromRGB(255, 255, 255)
+indicator.Text = "DT"
+indicator.Font = Enum.Font.GothamBold
+indicator.TextSize = 16
+indicator.Visible = true
+indicator.Parent = screenGui
 
-local menu = Instance.new("Frame")
-menu.Size = UDim2.new(0, 300, 0, 200)
-menu.Position = UDim2.new(0.5, -150, 0.5, -100)
-menu.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-menu.Visible = false
-menu.Parent = gui
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 200)
+frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Visible = false
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
 
-local function movePlayer()
-    if busy then return end
-    busy = true
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Text = "Single Tap DT"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.Parent = frame
+
+local bindLabel = Instance.new("TextLabel")
+bindLabel.Size = UDim2.new(1, -20, 0, 25)
+bindLabel.Position = UDim2.new(0, 10, 0, 40)
+bindLabel.BackgroundTransparency = 1
+bindLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+bindLabel.Text = "Current Bind: LMB"
+bindLabel.Font = Enum.Font.Gotham
+bindLabel.TextSize = 12
+bindLabel.TextXAlignment = Enum.TextXAlignment.Left
+bindLabel.Parent = frame
+
+local changeBind = Instance.new("TextButton")
+changeBind.Size = UDim2.new(1, -20, 0, 30)
+changeBind.Position = UDim2.new(0, 10, 0, 70)
+changeBind.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+changeBind.TextColor3 = Color3.fromRGB(255, 255, 255)
+changeBind.Text = "Change Bind"
+changeBind.Font = Enum.Font.Gotham
+changeBind.TextSize = 12
+changeBind.Parent = frame
+
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(1, -20, 0, 30)
+closeButton.Position = UDim2.new(0, 10, 0, 140)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Text = "Close"
+closeButton.Font = Enum.Font.Gotham
+closeButton.TextSize = 12
+closeButton.Parent = frame
+
+local function checkWallCollision(startPos, endPos)
+    local character = LocalPlayer.Character
+    if not character then return false, endPos end
     
-    if tick() - lastTime < cooldown then
-        busy = false
-        return
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {character}
+    
+    local raycastResult = Workspace:Raycast(startPos, (endPos - startPos), raycastParams)
+    
+    if raycastResult then
+        return true, raycastResult.Position
     end
     
-    lastTime = tick()
-    
-    local char = LP.Character
-    if not char then
-        busy = false
-        return
-    end
-    
-    local hum = char:FindFirstChild("Humanoid")
-    local root = char:FindFirstChild("HumanoidRootPart")
-    
-    if not hum or not root then
-        busy = false
-        return
-    end
-    
-    local dir = hum.MoveDirection
-    if dir.Magnitude < 0.1 then
-        dir = root.CFrame.LookVector
-    end
-    dir = dir.Unit
-    
-    local start = root.Position
-    local target = start + dir * 3
-    
-    root.CFrame = CFrame.new(target, target + dir)
-    
-    wait(0.1)
-    busy = false
+    return false, endPos
 end
 
-UIS.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    if input.UserInputType == bind then
-        movePlayer()
+local function getMoveDirection()
+    local character = LocalPlayer.Character
+    if not character then return Vector3.new(0, 0, 0) end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then return Vector3.new(0, 0, 0) end
+    
+    local moveDirection = humanoid.MoveDirection
+    
+    if moveDirection.Magnitude < 0.1 then
+        moveDirection = rootPart.CFrame.LookVector
     end
+    
+    return moveDirection.Unit
+end
+
+local function performSingleMove()
+    if isProcessing then return end
+    isProcessing = true
+    
+    local currentTime = tick()
+    if currentTime - lastActionTime < actionCooldown then
+        isProcessing = false
+        return
+    end
+    
+    lastActionTime = currentTime
+    
+    local character = LocalPlayer.Character
+    if not character then
+        isProcessing = false
+        return
+    end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then
+        isProcessing = false
+        return
+    end
+    
+    local direction = getMoveDirection()
+    if direction.Magnitude < 0.1 then
+        isProcessing = false
+        return
+    end
+    
+    local startPos = rootPart.Position
+    local endPos = startPos + direction * 3
+    
+    local hitWall, hitPosition = checkWallCollision(startPos, endPos)
+    
+    if hitWall then
+        local safeDistance = 1.0
+        local moveVector = (hitPosition - startPos)
+        local moveDistance = math.max(0, moveVector.Magnitude - safeDistance)
+        
+        if moveDistance > 0.5 then
+            local safePosition = startPos + direction * moveDistance
+            rootPart.CFrame = CFrame.new(safePosition, safePosition + direction)
+        end
+    else
+        rootPart.CFrame = CFrame.new(endPos, endPos + direction)
+    end
+    
+    wait(0.1)
+    isProcessing = false
+end
+
+local function onInputBegan(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == currentBind then
+        performSingleMove()
+    end
+end
+
+changeBind.MouseButton1Click:Connect(function()
+    listeningForBind = true
+    bindLabel.Text = "Press new key..."
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+    frame.Visible = false
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
     if input.KeyCode == Enum.KeyCode.Delete then
-        menu.Visible = not menu.Visible
+        frame.Visible = not frame.Visible
+    end
+    
+    if listeningForBind then
+        currentBind = input.UserInputType
+        local bindName = tostring(input.KeyCode or input.UserInputType):gsub("Enum.%a+%.", "")
+        bindLabel.Text = "Current Bind: " .. bindName
+        listeningForBind = false
     end
 end)
 
-print("DT System Loaded")
-print("LMB = Teleport")
-print("DEL = Toggle Menu")
+UserInputService.InputBegan:Connect(onInputBegan)
+
+print("DT System Ready")
+print("LMB = Teleport 3 studs")
+print("DEL = Menu")
