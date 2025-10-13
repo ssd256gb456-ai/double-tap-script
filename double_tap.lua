@@ -17,14 +17,19 @@ screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 local indicator = Instance.new("TextLabel")
 indicator.Name = "DTIndicator"
 indicator.Size = UDim2.new(0, 60, 0, 30)
-indicator.Position = UDim2.new(0, 10, 0, 10)
+indicator.Position = UDim2.new(0, 10, 0.5, -15)
 indicator.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 indicator.TextColor3 = Color3.fromRGB(255, 255, 255)
 indicator.Text = "DT"
 indicator.Font = Enum.Font.GothamBold
 indicator.TextSize = 16
+indicator.TextStrokeTransparency = 1
 indicator.Visible = true
 indicator.Parent = screenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 6)
+UICorner.Parent = indicator
 
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 300, 0, 200)
@@ -36,9 +41,9 @@ frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = frame
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 8)
+frameCorner.Parent = frame
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
@@ -95,7 +100,7 @@ distanceLabel.Size = UDim2.new(1, -20, 0, 25)
 distanceLabel.Position = UDim2.new(0, 10, 0, 135)
 distanceLabel.BackgroundTransparency = 1
 distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-distanceLabel.Text = "Distance: 3 studs"
+distanceLabel.Text = "Distance: 4 studs"
 distanceLabel.Font = Enum.Font.Gotham
 distanceLabel.TextSize = 12
 distanceLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -172,7 +177,7 @@ local function performSingleMove()
         return
     end
     local startPos = rootPart.Position
-    local endPos = startPos + direction * 3
+    local endPos = startPos + direction * 4
     local hitWall, hitPosition = checkWallCollision(startPos, endPos)
     if hitWall then
         local safeDistance = 1.0
@@ -225,6 +230,5 @@ end)
 UserInputService.InputBegan:Connect(onInputBegan)
 
 print("DT System Ready")
-print("LMB = Teleport 3 studs")
+print("LMB = Teleport 4 studs")
 print("DEL = Toggle Menu")
-print("Menu contains: Bind settings, Status, Distance info")
