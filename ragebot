@@ -1,67 +1,68 @@
 --[[
-Исправленный Anti-Aim скрипт для Roblox
-Решена ошибка "attempt to call a nil value"
+Универсальный загрузчик скриптов для Roblox
+Решает ошибку "attempt to call a nil value"
 --]]
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
-
--- A. Безопасная конфигурация
-local AA_Config = {
-    Enabled = true,
-    Pitch = "Down",
-    Yaw = "Backward",
-    SpinSpeed = 50
-}
-
--- B. Проверка существования объектов
-local function SafeApplyAntiAim()
-    -- 1. Проверяем существование игрока
-    if not LocalPlayer then return end
-    
-    -- 2. Проверяем существование персонажа
-    local character = LocalPlayer.Character
-    if not character then return end
-    
-    -- 3. Проверяем основную часть
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    local primaryPart = character.PrimaryPart
-    if not humanoid or not primaryPart then return end
-
-    -- Применяем Anti-Aim
-    humanoid.AutoRotate = false
-    if AA_Config.Yaw == "Backward" then
-        character:SetPrimaryPartCFrame(
-            CFrame.new(primaryPart.Position, 
-                      primaryPart.Position - primaryPart.CFrame.LookVector)
-        )
-    end
-end
-
--- C. Защищенное подключение
-local function InitializeAntiAim()
-    -- 1. Проверяем доступность сервисов
-    if not pcall(function()
-        return game:GetService("Players")
-    end) then return end
-
-    -- 2. Создаем безопасное соединение
-    local success, error = pcall(function()
-        RunService.Heartbeat:Connect(function()
-            if AA_Config.Enabled then
-                SafeApplyAntiAim()
-            end
+-- A. Проверка доступных функций загрузки
+local function SafeLoadScript(url)
+    -- 1. Проверяем наличие game:HttpGet
+    if game and game.HttpGet then
+        local success, result = pcall(function()
+            return game:HttpGet(url)
         end)
-    end)
+        if success then return result end
+    end
     
-    -- 3. Обработка ошибок
+    -- 2. Проверяем наличие syn.request
+    if syn and syn.request then
+        local response = syn.request({
+            Url = url,
+            Method = "GET"
+        })
+        if response.Body then return response.Body end
+    end
+    
+    -- 3. Альтернативные методы
+    if http_request then
+        local response = http_request({Url = url, Method = "GET"})
+        if response.Body then return response.Body end
+    end
+    
+    error("Не удалось загрузить скрипт")
+end
+
+-- B. Безопасное выполнение кода
+local function ExecuteSecure(code)
+    -- 1. Создаем защищенное окружение
+    local env = {}
+    setmetatable(env, {__index = _G})
+    
+    -- 2. Загружаем код с обработкой ошибок
+    local fn, loadError = loadstring(code)
+    if not fn then
+        error("Ошибка загрузки: " .. tostring(loadError))
+    end
+    
+    -- 3. Выполняем в изолированном окружении
+    setfenv(fn, env)
+    local success, execError = pcall(fn)
     if not success then
-        warn("Ошибка инициализации Anti-Aim: " .. tostring(error))
+        error("Ошибка выполнения: " .. tostring(execError))
     end
 end
 
--- Запускаем скрипт
-InitializeAntiAim()
+-- C. Основная функция загрузки
+local function LoadFromGitHub()
+    local githubUrl = "https://raw.githubusercontent.com/your_username/your_repo/main/script.lua"
+    
+    -- 1. Загружаем код
+    local scriptCode = SafeLoadScript(githubUrl)
+    
+    -- 2. Выполняем код
+    ExecuteSecure(scriptCode)
+    
+    print("Скрипт успешно загружен и выполнен")
+end
 
-print("Anti-Aim скрипт успешно загружен и работает")
+-- Запускаем загрузку
+LoadFromGitHub()
