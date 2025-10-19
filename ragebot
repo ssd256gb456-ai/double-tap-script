@@ -1,198 +1,72 @@
--- Rage Bot Configuration Script for Educational Purposes
-local RageBot = {
+]--[[
+Roblox Lua Script - Custom Anti-Aim
+Создано для выживания
+--]]
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+-- Конфигурация Anti-Aim
+local AA_Config = {
     Enabled = true,
-    TargetSelection = "Cycle",
-    FriendlyFire = false,
-    Hitbox = "Head",
-    
-    MultiPoint = {
-        Enabled = true,
-        Scale = 90,
-        Quality = "High"
-    },
-    
-    AutoFire = {
-        Mode = "OnHotkey",
-        Hotkey = Enum.KeyCode.Q
-    },
-    
-    AutoPenetration = true,
-    SilentAim = true,
-    
-    HitChance = {
-        Minimum = 60,
-        Precision = 25
-    },
-    
-    FOV = {
-        Maximum = 180
-    },
-    
-    Damage = {
-        Minimum = 10
-    },
-    
-    AutoScope = true,
-    ReduceAimStep = true
+    Pitch = "Down", -- "Down", "Up", "Zero"
+    Yaw = "Backward", -- "Backward", "Forward", "Spin"
+    SpinSpeed = 50,
+    JitterRange = 30,
+    DesyncAmount = 60
 }
 
--- Other Features
-local Other = {
-    RemoveSpread = true,
-    RemoveRecoil = true,
-    QuickStop = true,
-    QuickStopMode = "QuickStopPlusDuck",
-    AccuracyBoost = "Off",
-    AntiAimCorrection = true,
-    FalseLagCorrection = true,
-    DelayShot = false,
-    PreferBodyAim = false
-}
-
--- Anti-Aimbot Settings
-local AntiAimbot = {
-    Pitch = "Off",
-    Yaw = "Off", 
-    Edge = "Off",
-    False = "Off",
-    Dynamic = false
-}
-
--- Main Rage Bot Function
-local function InitializeRageBot()
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    local Mouse = LocalPlayer:GetMouse()
-    local Camera = workspace.CurrentCamera
-    
-    -- Target Finding Function
-    local function FindBestTarget()
-        local bestTarget = nil
-        local bestFOV = RageBot.FOV.Maximum
-        
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-                if RageBot.FriendlyFire == false and player.Team == LocalPlayer.Team then
-                    continue
-                end
-                
-                local character = player.Character
-                local head = character.Head
-                local screenPoint, onScreen = Camera:WorldToScreenPoint(head.Position)
-                
-                if onScreen then
-                    local mousePos = Vector2.new(Mouse.X, Mouse.Y)
-                    local targetPos = Vector2.new(screenPoint.X, screenPoint.Y)
-                    local fov = (mousePos - targetPos).Magnitude
-                    
-                    if fov < bestFOV then
-                        bestFOV = fov
-                        bestTarget = {
-                            Player = player,
-                            Character = character,
-                            Hitbox = head,
-                            Distance = (Camera.CFrame.Position - head.Position).Magnitude
-                        }
-                    end
-                end
-            end
-        end
-        
-        return bestTarget
-    end
-    
-    -- Multi-Point Calculation
-    local function CalculateMultiPoint(hitbox)
-        if not RageBot.MultiPoint.Enabled then
-            return hitbox.Position
-        end
-        
-        local offset = Vector3.new(
-            (math.random() - 0.5) * 2 * (RageBot.MultiPoint.Scale / 100),
-            (math.random() - 0.5) * 2 * (RageBot.MultiPoint.Scale / 100),
-            (math.random() - 0.5) * 2 * (RageBot.MultiPoint.Scale / 100)
-        )
-        
-        return hitbox.Position + offset
-    end
-    
-    -- Hit Chance Calculation
-    local function CalculateHitChance()
-        local baseChance = RageBot.HitChance.Minimum
-        local randomFactor = math.random(-RageBot.HitChance.Precision, RageBot.HitChance.Precision)
-        return baseChance + randomFactor
-    end
-    
-    -- Main Aim Function
-    local function RageAim()
-        if not RageBot.Enabled then return end
-        
-        local target = FindBestTarget()
-        if not target then return end
-        
-        -- Check hit chance
-        if CalculateHitChance() < RageBot.HitChance.Minimum then
-            return
-        end
-        
-        -- Calculate aim point with multi-point
-        local aimPoint = CalculateMultiPoint(target.Hitbox)
-        
-        -- Silent Aim (set camera direction without moving mouse)
-        if RageBot.SilentAim then
-            local direction = (aimPoint - Camera.CFrame.Position).Unit
-            Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, Camera.CFrame.Position + direction)
+-- Основные функции
+local function ApplyAntiAim(character)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        -- A. Управление Pitch (Наклон головы вверх/вниз)
+        if AA_Config.Pitch == "Down" then
+            humanoid.CameraOffset = Vector3.new(0, -0.5, 0)
+        elseif AA_Config.Pitch == "Up" then
+            humanoid.CameraOffset = Vector3.new(0, 0.5, 0)
         else
-            -- Legacy aim (not recommended for rage)
-            -- This would move mouse directly
+            humanoid.CameraOffset = Vector3.new(0, 0, 0)
         end
-        
-        -- Auto Fire
-        if RageBot.AutoFire.Mode == "OnHotkey" then
-            if game:GetService("UserInputService"):IsKeyDown(RageBot.AutoFire.Hotkey) then
-                -- Simulate mouse click for shooting
-                if target.Distance < RageBot.Damage.Minimum * 10 then
-                    -- Fire weapon logic would go here
-                end
-            end
+
+        -- B. Управление Yaw (Поворот тела)
+        if AA_Config.Yaw == "Backward" then
+            humanoid.AutoRotate = false
+            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position, character.PrimaryPart.Position - character.PrimaryPart.CFrame.LookVector))
+        elseif AA_Config.Yaw == "Spin" then
+            humanoid.AutoRotate = false
+            local spinAngle = tick() * AA_Config.SpinSpeed
+            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position) * CFrame.Angles(0, spinAngle, 0))
         end
-    end
-    
-    -- Apply Other Features
-    local function ApplyOtherFeatures()
-        if Other.RemoveRecoil then
-            -- Recoil removal logic
-        end
-        
-        if Other.RemoveSpread then
-            -- Spread removal logic  
-        end
-        
-        if Other.QuickStop then
-            -- Quick stop implementation
+
+        -- C. Джиттер и десинхронизация
+        if AA_Config.Yaw == "Jitter" then
+            humanoid.AutoRotate = false
+            local jitter = math.sin(tick() * 10) * AA_Config.JitterRange
+            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position) * CFrame.Angles(0, math.rad(jitter), 0))
         end
     end
-    
-    -- Anti-Aimbot System
-    local function ApplyAntiAimbot()
-        if AntiAimbot.Dynamic then
-            -- Dynamic anti-aim would go here
-        end
-    end
-    
-    -- Main loop
-    game:GetService("RunService").RenderStepped:Connect(function()
-        RageAim()
-        ApplyOtherFeatures()
-        ApplyAntiAimbot()
-    end)
 end
 
--- Initialize the Rage Bot
-InitializeRageBot()
+-- Цикл обновления
+local AA_Connection
+AA_Connection = RunService.Heartbeat:Connect(function()
+    if AA_Config.Enabled then
+        local character = LocalPlayer.Character
+        if character and character.PrimaryPart then
+            ApplyAntiAim(character)
+        end
+    end
+end)
 
-return {
-    RageBot = RageBot,
-    Other = Other,
-    AntiAimbot = AntiAimbot
-}
+-- Функция для обновления конфигурации
+local function UpdateConfig(newConfig)
+    AA_Config = newConfig
+end
+
+-- Инжект в окружение для доступа из консоли
+getgenv().AA_Config = AA_Config
+getgenv().UpdateAAConfig = UpdateConfig
+
+print("Anti-Aim скрипт активирован. Используйте AA_Config для настройки.")
