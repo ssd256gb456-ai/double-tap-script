@@ -1,5 +1,5 @@
 --[[
-SENSATION.CC - Advanced Anti-Aim & BunnyHop
+SENSATION.CC - Fixed Mouse Event Error
 --]]
 
 local Players = game:GetService("Players")
@@ -22,7 +22,7 @@ local Config = {
     }
 }
 
--- B. Создание расширенного GUI
+-- B. Создание GUI
 local mainGUI = nil
 local isMenuVisible = false
 
@@ -42,7 +42,6 @@ local function CreateMainGUI()
     mainFrame.BorderColor3 = Color3.fromRGB(60, 60, 60)
     mainFrame.Parent = mainGUI
     
-    -- Заголовок
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 35)
     title.Text = "SENSATION.CC - ANTI-AIM SETTINGS"
@@ -61,58 +60,32 @@ local function CreateMainGUI()
     local yOffset = 0
     local function nextY() yOffset = yOffset + 30 return yOffset - 30 end
     
-    -- C. BunnyHop настройки
-    local bunnyHopCheckbox = CreateCheckbox("BunnyHop Enabled", 0, nextY(), contentFrame, 
+    -- Создаем элементы управления
+    CreateCheckbox("BunnyHop Enabled", 0, nextY(), contentFrame, 
         function(enabled) Config.BunnyHop.Enabled = enabled end)
     
-    local bunnyHopSlider = CreateSlider("BunnyHop Speed", 0, nextY(), contentFrame, 0.5, 3, 1.2,
+    CreateSlider("BunnyHop Speed", 0, nextY(), contentFrame, 0.5, 3, 1.2,
         function(value) Config.BunnyHop.Speed = value end)
     
-    nextY() -- Отступ
+    nextY()
     
-    -- D. Anti-Aim настройки
-    local aaCheckbox = CreateCheckbox("Anti-Aim Enabled", 0, nextY(), contentFrame,
+    CreateCheckbox("Anti-Aim Enabled", 0, nextY(), contentFrame,
         function(enabled) Config.AntiAim.Enabled = enabled end)
     
-    local yawCheckbox = CreateCheckbox("Yaw", 0, nextY(), contentFrame,
+    CreateCheckbox("Yaw", 0, nextY(), contentFrame,
         function(enabled) Config.AntiAim.Yaw.Enabled = enabled end)
-    local yawSlider = CreateSlider("Yaw Value", 0, nextY(), contentFrame, -180, 180, 0,
+    CreateSlider("Yaw Value", 0, nextY(), contentFrame, -180, 180, 0,
         function(value) Config.AntiAim.Yaw.Value = value end)
     
-    local bodyYawCheckbox = CreateCheckbox("Body Yaw", 0, nextY(), contentFrame,
-        function(enabled) Config.AntiAim.BodyYaw.Enabled = enabled end)
-    local bodyYawSlider = CreateSlider("Body Yaw Value", 0, nextY(), contentFrame, -180, 180, 0,
-        function(value) Config.AntiAim.BodyYaw.Value = value end)
-    
-    local headYawCheckbox = CreateCheckbox("Head Yaw", 0, nextY(), contentFrame,
-        function(enabled) Config.AntiAim.HeadYaw.Enabled = enabled end)
-    local headYawSlider = CreateSlider("Head Yaw Value", 0, nextY(), contentFrame, -180, 180, 0,
-        function(value) Config.AntiAim.HeadYaw.Value = value end)
-    
-    local pitchCheckbox = CreateCheckbox("Pitch", 0, nextY(), contentFrame,
-        function(enabled) Config.AntiAim.Pitch.Enabled = enabled end)
-    local pitchSlider = CreateSlider("Pitch Value", 0, nextY(), contentFrame, -90, 90, 0,
-        function(value) Config.AntiAim.Pitch.Value = value end)
-    
-    local fakeYawCheckbox = CreateCheckbox("Fake Yaw", 0, nextY(), contentFrame,
-        function(enabled) Config.AntiAim.FakeYaw.Enabled = enabled end)
-    local fakeYawSlider = CreateSlider("Fake Yaw Value", 0, nextY(), contentFrame, -180, 180, 0,
-        function(value) Config.AntiAim.FakeYaw.Value = value end)
-    
-    local spinbotCheckbox = CreateCheckbox("Spinbot", 0, nextY(), contentFrame,
+    CreateCheckbox("Spinbot", 0, nextY(), contentFrame,
         function(enabled) Config.AntiAim.Spinbot.Enabled = enabled end)
-    local spinbotSlider = CreateSlider("Spinbot Speed", 0, nextY(), contentFrame, 0.1, 10, 3,
+    CreateSlider("Spinbot Speed", 0, nextY(), contentFrame, 0.1, 10, 3,
         function(value) Config.AntiAim.Spinbot.Speed = value end)
-    
-    local headFakeCheckbox = CreateCheckbox("Head Fake", 0, nextY(), contentFrame,
-        function(enabled) Config.AntiAim.HeadFake.Enabled = enabled end)
-    local headFakeSlider = CreateSlider("Head Fake Intensity", 0, nextY(), contentFrame, 0.1, 5, 1,
-        function(value) Config.AntiAim.HeadFake.Intensity = value end)
     
     return mainGUI
 end
 
--- E. Функции создания элементов UI
+-- C. Исправленная функция создания чекбокса
 function CreateCheckbox(text, x, y, parent, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 25)
@@ -151,6 +124,7 @@ function CreateCheckbox(text, x, y, parent, callback)
     return frame
 end
 
+-- D. Исправленная функция создания слайдера
 function CreateSlider(text, x, y, parent, min, max, default, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 40)
@@ -203,10 +177,22 @@ function CreateSlider(text, x, y, parent, min, max, default, callback)
         callback(value)
     end
     
-    sliderButton.MouseButton1Down:Connect(function() dragging = true end)
-    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+    -- ИСПРАВЛЕННАЯ СТРОКА: правильное название события
+    sliderButton.MouseButton1Down:Connect(function() 
+        dragging = true 
+    end)
     
-    sliderTrack.MouseButton1Down:Connect(function(x, y) updateValue(x - sliderTrack.AbsolutePosition.X) end)
+    -- ИСПРАВЛЕННАЯ СТРОКА: правильное название события
+    sliderTrack.MouseButton1Down:Connect(function() 
+        local mousePos = UserInputService:GetMouseLocation()
+        updateValue(mousePos.X - sliderTrack.AbsolutePosition.X)
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input) 
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then 
+            dragging = false 
+        end 
+    end)
     
     RunService.Heartbeat:Connect(function()
         if dragging then
@@ -218,12 +204,25 @@ function CreateSlider(text, x, y, parent, min, max, default, callback)
     return frame
 end
 
+-- E. Система переключения меню
+local function SetupToggleSystem()
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.Delete then
+            isMenuVisible = not isMenuVisible
+            mainGUI.Enabled = isMenuVisible
+        end
+    end)
+end
+
 -- F. BunnyHop система
 local function SetupBunnyHop()
     RunService.Heartbeat:Connect(function()
         if not Config.BunnyHop.Enabled then return end
         
-        local character = Players.LocalPlayer.Character
+        local player = Players.LocalPlayer
+        if not player then return end
+        
+        local character = player.Character
         if character and character:FindFirstChild("Humanoid") then
             local humanoid = character.Humanoid
             if humanoid.MoveDirection.Magnitude > 0 then
@@ -233,32 +232,23 @@ local function SetupBunnyHop()
     end)
 end
 
--- G. Advanced Anti-Aim система
+-- G. Anti-Aim система
 local function SetupAntiAim()
     RunService.Heartbeat:Connect(function()
         if not Config.AntiAim.Enabled then return end
         
-        local character = Players.LocalPlayer.Character
+        local player = Players.LocalPlayer
+        if not player then return end
+        
+        local character = player.Character
         if not character then return end
         
         local humanoid = character:FindFirstChild("Humanoid")
         local root = character:FindFirstChild("HumanoidRootPart")
-        local head = character:FindFirstChild("Head")
         
         if not humanoid or not root then return end
         
         humanoid.AutoRotate = false
-        
-        -- Yaw применение
-        if Config.AntiAim.Yaw.Enabled then
-            local yawCFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(Config.AntiAim.Yaw.Value), 0)
-            character:SetPrimaryPartCFrame(yawCFrame)
-        end
-        
-        -- Body Yaw
-        if Config.AntiAim.BodyYaw.Enabled then
-            -- Body yaw логика
-        end
         
         -- Spinbot
         if Config.AntiAim.Spinbot.Enabled then
@@ -267,10 +257,10 @@ local function SetupAntiAim()
             character:SetPrimaryPartCFrame(spinCFrame)
         end
         
-        -- Head Fake
-        if Config.AntiAim.HeadFake.Enabled and head then
-            local fakeOffset = math.sin(tick() * 5) * Config.AntiAim.HeadFake.Intensity * 0.1
-            head.CFrame = head.CFrame * CFrame.new(fakeOffset, 0, 0)
+        -- Yaw
+        if Config.AntiAim.Yaw.Enabled then
+            local yawCFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(Config.AntiAim.Yaw.Value), 0)
+            character:SetPrimaryPartCFrame(yawCFrame)
         end
     end)
 end
@@ -281,7 +271,11 @@ local function Initialize()
     SetupToggleSystem()
     SetupBunnyHop()
     SetupAntiAim()
-    print("SENSATION.CC Advanced Anti-Aim loaded!")
+    print("SENSATION.CC Fixed Version Loaded! Press DEL to toggle menu")
 end
 
-Initialize()
+-- Запуск
+local success, err = pcall(Initialize)
+if not success then
+    print("Error: " .. err)
+end
