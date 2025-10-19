@@ -1,5 +1,5 @@
 --[[
-SENSATION.CC - Fixed Menu Visibility
+SENSATION.CC - Advanced Anti-Aim & BunnyHop
 --]]
 
 local Players = game:GetService("Players")
@@ -7,137 +7,281 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 
--- A. Глобальные переменные
+-- A. Конфигурация
+local Config = {
+    BunnyHop = {Enabled = false, Speed = 1.2},
+    AntiAim = {
+        Enabled = false,
+        Yaw = {Enabled = false, Value = 0},
+        BodyYaw = {Enabled = false, Value = 0},
+        HeadYaw = {Enabled = false, Value = 0},
+        Pitch = {Enabled = false, Value = 0},
+        FakeYaw = {Enabled = false, Value = 0},
+        Spinbot = {Enabled = false, Speed = 3},
+        HeadFake = {Enabled = false, Intensity = 1}
+    }
+}
+
+-- B. Создание расширенного GUI
 local mainGUI = nil
 local isMenuVisible = false
-local inputConnection = nil
 
--- B. Простое создание GUI
 local function CreateMainGUI()
-    -- Удаляем старый GUI если есть
-    if mainGUI then
-        mainGUI:Destroy()
-    end
+    if mainGUI then mainGUI:Destroy() end
     
-    -- Создаем новый GUI
     mainGUI = Instance.new("ScreenGui")
     mainGUI.Name = "SensationCC"
     mainGUI.Enabled = false
     mainGUI.Parent = CoreGui
     
-    -- Основной фрейм
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 400, 0, 300)
-    mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    mainFrame.Size = UDim2.new(0, 450, 0, 500)
+    mainFrame.Position = UDim2.new(0.5, -225, 0.5, -250)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     mainFrame.BorderSizePixel = 1
     mainFrame.BorderColor3 = Color3.fromRGB(60, 60, 60)
     mainFrame.Parent = mainGUI
     
     -- Заголовок
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, 0, 0, 40)
-    titleLabel.Text = "SENSATION.CC"
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextSize = 16
-    titleLabel.Parent = mainFrame
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 35)
+    title.Text = "SENSATION.CC - ANTI-AIM SETTINGS"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 14
+    title.Parent = mainFrame
     
-    -- Кнопка закрытия
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 80, 0, 25)
-    closeButton.Position = UDim2.new(1, -85, 0, 5)
-    closeButton.Text = "Close [DEL]"
-    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    closeButton.Parent = mainFrame
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -20, 1, -45)
+    contentFrame.Position = UDim2.new(0, 10, 0, 40)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = mainFrame
     
-    closeButton.MouseButton1Click:Connect(function()
-        mainGUI.Enabled = false
-        isMenuVisible = false
-    end)
+    local yOffset = 0
+    local function nextY() yOffset = yOffset + 30 return yOffset - 30 end
     
-    -- Текст контента
-    local contentText = Instance.new("TextLabel")
-    contentText.Size = UDim2.new(1, -20, 1, -60)
-    contentText.Position = UDim2.new(0, 10, 0, 50)
-    contentText.Text = "RAGEBOT:\n- AimBot: Enabled\n- Silent Aim: ON\n\nVISUALS:\n- ESP: Active\n- Boxes: ON\n\nPress DEL to hide menu"
-    contentText.TextColor3 = Color3.fromRGB(200, 200, 200)
-    contentText.BackgroundTransparency = 1
-    contentText.TextXAlignment = Enum.TextXAlignment.Left
-    contentText.TextYAlignment = Enum.TextYAlignment.Top
-    contentText.Font = Enum.Font.Gotham
-    contentText.TextSize = 12
-    contentText.Parent = mainFrame
+    -- C. BunnyHop настройки
+    local bunnyHopCheckbox = CreateCheckbox("BunnyHop Enabled", 0, nextY(), contentFrame, 
+        function(enabled) Config.BunnyHop.Enabled = enabled end)
+    
+    local bunnyHopSlider = CreateSlider("BunnyHop Speed", 0, nextY(), contentFrame, 0.5, 3, 1.2,
+        function(value) Config.BunnyHop.Speed = value end)
+    
+    nextY() -- Отступ
+    
+    -- D. Anti-Aim настройки
+    local aaCheckbox = CreateCheckbox("Anti-Aim Enabled", 0, nextY(), contentFrame,
+        function(enabled) Config.AntiAim.Enabled = enabled end)
+    
+    local yawCheckbox = CreateCheckbox("Yaw", 0, nextY(), contentFrame,
+        function(enabled) Config.AntiAim.Yaw.Enabled = enabled end)
+    local yawSlider = CreateSlider("Yaw Value", 0, nextY(), contentFrame, -180, 180, 0,
+        function(value) Config.AntiAim.Yaw.Value = value end)
+    
+    local bodyYawCheckbox = CreateCheckbox("Body Yaw", 0, nextY(), contentFrame,
+        function(enabled) Config.AntiAim.BodyYaw.Enabled = enabled end)
+    local bodyYawSlider = CreateSlider("Body Yaw Value", 0, nextY(), contentFrame, -180, 180, 0,
+        function(value) Config.AntiAim.BodyYaw.Value = value end)
+    
+    local headYawCheckbox = CreateCheckbox("Head Yaw", 0, nextY(), contentFrame,
+        function(enabled) Config.AntiAim.HeadYaw.Enabled = enabled end)
+    local headYawSlider = CreateSlider("Head Yaw Value", 0, nextY(), contentFrame, -180, 180, 0,
+        function(value) Config.AntiAim.HeadYaw.Value = value end)
+    
+    local pitchCheckbox = CreateCheckbox("Pitch", 0, nextY(), contentFrame,
+        function(enabled) Config.AntiAim.Pitch.Enabled = enabled end)
+    local pitchSlider = CreateSlider("Pitch Value", 0, nextY(), contentFrame, -90, 90, 0,
+        function(value) Config.AntiAim.Pitch.Value = value end)
+    
+    local fakeYawCheckbox = CreateCheckbox("Fake Yaw", 0, nextY(), contentFrame,
+        function(enabled) Config.AntiAim.FakeYaw.Enabled = enabled end)
+    local fakeYawSlider = CreateSlider("Fake Yaw Value", 0, nextY(), contentFrame, -180, 180, 0,
+        function(value) Config.AntiAim.FakeYaw.Value = value end)
+    
+    local spinbotCheckbox = CreateCheckbox("Spinbot", 0, nextY(), contentFrame,
+        function(enabled) Config.AntiAim.Spinbot.Enabled = enabled end)
+    local spinbotSlider = CreateSlider("Spinbot Speed", 0, nextY(), contentFrame, 0.1, 10, 3,
+        function(value) Config.AntiAim.Spinbot.Speed = value end)
+    
+    local headFakeCheckbox = CreateCheckbox("Head Fake", 0, nextY(), contentFrame,
+        function(enabled) Config.AntiAim.HeadFake.Enabled = enabled end)
+    local headFakeSlider = CreateSlider("Head Fake Intensity", 0, nextY(), contentFrame, 0.1, 5, 1,
+        function(value) Config.AntiAim.HeadFake.Intensity = value end)
     
     return mainGUI
 end
 
--- C. Простая система переключения
-local function SetupToggleSystem()
-    -- Отключаем старый обработчик
-    if inputConnection then
-        inputConnection:Disconnect()
+-- E. Функции создания элементов UI
+function CreateCheckbox(text, x, y, parent, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 25)
+    frame.Position = UDim2.new(0, x, 0, y)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+    
+    local checkbox = Instance.new("TextButton")
+    checkbox.Size = UDim2.new(0, 20, 0, 20)
+    checkbox.Position = UDim2.new(0, 0, 0, 2)
+    checkbox.Text = ""
+    checkbox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    checkbox.BorderSizePixel = 1
+    checkbox.BorderColor3 = Color3.fromRGB(100, 100, 100)
+    checkbox.Parent = frame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -25, 1, 0)
+    label.Position = UDim2.new(0, 25, 0, 0)
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+    label.Parent = frame
+    
+    local checked = false
+    
+    checkbox.MouseButton1Click:Connect(function()
+        checked = not checked
+        checkbox.BackgroundColor3 = checked and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(60, 60, 60)
+        callback(checked)
+    end)
+    
+    return frame
+end
+
+function CreateSlider(text, x, y, parent, min, max, default, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 40)
+    frame.Position = UDim2.new(0, x, 0, y)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 15)
+    label.Text = text .. ": " .. default
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 11
+    label.Parent = frame
+    
+    local sliderTrack = Instance.new("Frame")
+    sliderTrack.Size = UDim2.new(1, 0, 0, 6)
+    sliderTrack.Position = UDim2.new(0, 0, 0, 20)
+    sliderTrack.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    sliderTrack.BorderSizePixel = 0
+    sliderTrack.Parent = frame
+    
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    sliderFill.BorderSizePixel = 0
+    sliderFill.Parent = sliderTrack
+    
+    local sliderButton = Instance.new("TextButton")
+    sliderButton.Size = UDim2.new(0, 12, 0, 12)
+    sliderButton.Position = UDim2.new((default - min) / (max - min), -6, 0.5, -6)
+    sliderButton.Text = ""
+    sliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sliderButton.BorderSizePixel = 0
+    sliderButton.Parent = sliderTrack
+    
+    local dragging = false
+    
+    local function updateValue(xPos)
+        local relativeX = math.clamp(xPos / sliderTrack.AbsoluteSize.X, 0, 1)
+        local value = min + (max - min) * relativeX
+        value = math.floor(value * 100) / 100
+        
+        sliderFill.Size = UDim2.new(relativeX, 0, 1, 0)
+        sliderButton.Position = UDim2.new(relativeX, -6, 0.5, -6)
+        label.Text = text .. ": " .. value
+        
+        callback(value)
     end
     
-    -- Новый обработчик
-    inputConnection = UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.Delete then
-            -- Переключаем видимость
-            isMenuVisible = not isMenuVisible
-            mainGUI.Enabled = isMenuVisible
-            
-            if isMenuVisible then
-                print("Menu OPENED")
-            else
-                print("Menu CLOSED")
+    sliderButton.MouseButton1Down:Connect(function() dragging = true end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+    
+    sliderTrack.MouseButton1Down:Connect(function(x, y) updateValue(x - sliderTrack.AbsolutePosition.X) end)
+    
+    RunService.Heartbeat:Connect(function()
+        if dragging then
+            local mousePos = UserInputService:GetMouseLocation()
+            updateValue(mousePos.X - sliderTrack.AbsolutePosition.X)
+        end
+    end)
+    
+    return frame
+end
+
+-- F. BunnyHop система
+local function SetupBunnyHop()
+    RunService.Heartbeat:Connect(function()
+        if not Config.BunnyHop.Enabled then return end
+        
+        local character = Players.LocalPlayer.Character
+        if character and character:FindFirstChild("Humanoid") then
+            local humanoid = character.Humanoid
+            if humanoid.MoveDirection.Magnitude > 0 then
+                humanoid.Jump = true
             end
         end
     end)
 end
 
--- D. Основная инициализация
-local function Main()
-    print("Initializing SENSATION.CC...")
-    
-    -- Создаем GUI
+-- G. Advanced Anti-Aim система
+local function SetupAntiAim()
+    RunService.Heartbeat:Connect(function()
+        if not Config.AntiAim.Enabled then return end
+        
+        local character = Players.LocalPlayer.Character
+        if not character then return end
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        local root = character:FindFirstChild("HumanoidRootPart")
+        local head = character:FindFirstChild("Head")
+        
+        if not humanoid or not root then return end
+        
+        humanoid.AutoRotate = false
+        
+        -- Yaw применение
+        if Config.AntiAim.Yaw.Enabled then
+            local yawCFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(Config.AntiAim.Yaw.Value), 0)
+            character:SetPrimaryPartCFrame(yawCFrame)
+        end
+        
+        -- Body Yaw
+        if Config.AntiAim.BodyYaw.Enabled then
+            -- Body yaw логика
+        end
+        
+        -- Spinbot
+        if Config.AntiAim.Spinbot.Enabled then
+            local spinAngle = tick() * Config.AntiAim.Spinbot.Speed
+            local spinCFrame = CFrame.new(root.Position) * CFrame.Angles(0, spinAngle, 0)
+            character:SetPrimaryPartCFrame(spinCFrame)
+        end
+        
+        -- Head Fake
+        if Config.AntiAim.HeadFake.Enabled and head then
+            local fakeOffset = math.sin(tick() * 5) * Config.AntiAim.HeadFake.Intensity * 0.1
+            head.CFrame = head.CFrame * CFrame.new(fakeOffset, 0, 0)
+        end
+    end)
+end
+
+-- H. Инициализация
+local function Initialize()
     CreateMainGUI()
-    
-    -- Даем время на создание
-    wait(0.1)
-    
-    -- Настраиваем переключение
     SetupToggleSystem()
-    
-    print("SENSATION.CC ready! Press DEL to show/hide menu")
-    print("Current menu state: " .. tostring(mainGUI.Enabled))
+    SetupBunnyHop()
+    SetupAntiAim()
+    print("SENSATION.CC Advanced Anti-Aim loaded!")
 end
 
--- E. Запуск
-local success, err = pcall(Main)
-
-if not success then
-    print("Error: " .. err)
-    
-    -- Альтернативный простой запуск
-    local simpleGUI = Instance.new("ScreenGui")
-    simpleGUI.Parent = CoreGui
-    simpleGUI.Enabled = true
-    
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 300, 0, 200)
-    frame.Position = UDim2.new(0.5, -150, 0.5, -100)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    frame.Parent = simpleGUI
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.Text = "SENSATION.CC\nMenu is active\nPress DEL key"
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.BackgroundTransparency = 1
-    label.TextScaled = true
-    label.Parent = frame
-    
-    mainGUI = simpleGUI
-end
+Initialize()
