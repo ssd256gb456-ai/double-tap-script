@@ -1,5 +1,5 @@
--- NEVERLOSE v1111 - Universal Inject Version
--- Works with any executor
+-- NEVERLOSE v1111 - Head Down Fix
+-- Only head tilts down in Down mode
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -10,17 +10,16 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 
--- Simple config that works
 local Config = {
     BunnyHop = false,
     AntiAim = false,
-    AntiAimMode = "Random",
+    AntiAimMode = "Random", -- "Random", "HeadDown", "Spin"
     ESP = false
 }
 
 local LocalPlayer = Players.LocalPlayer
 
--- Ultra simple GUI creation
+-- Simple GUI
 local function CreateSimpleMenu()
     local mainGUI = Instance.new("ScreenGui")
     mainGUI.Name = "Neverlosev1111"
@@ -35,7 +34,7 @@ local function CreateSimpleMenu()
     
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 30)
-    title.Text = "NEVERLOSE v1111 - LOADED"
+    title.Text = "NEVERLOSE v1111 - HEAD DOWN FIX"
     title.TextColor3 = Color3.fromRGB(0, 255, 255)
     title.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     title.Font = Enum.Font.GothamBold
@@ -48,7 +47,7 @@ local function CreateSimpleMenu()
     content.BackgroundTransparency = 1
     content.Parent = mainFrame
     
-    -- Simple toggle function
+    -- Toggle buttons
     local function AddToggle(text, configKey, yPos)
         local button = Instance.new("TextButton")
         button.Size = UDim2.new(1, 0, 0, 25)
@@ -67,7 +66,7 @@ local function CreateSimpleMenu()
         end)
     end
     
-    -- Mode selector
+    -- Mode selector - теперь HeadDown вместо BodyDown
     local modeButton = Instance.new("TextButton")
     modeButton.Size = UDim2.new(1, 0, 0, 25)
     modeButton.Position = UDim2.new(0, 0, 0, 80)
@@ -79,7 +78,7 @@ local function CreateSimpleMenu()
     modeButton.Parent = content
     
     modeButton.MouseButton1Click:Connect(function()
-        local modes = {"Random", "BodyDown", "Spin"}
+        local modes = {"Random", "HeadDown", "Spin"}
         local current = Config.AntiAimMode
         local nextIndex = 1
         
@@ -94,16 +93,14 @@ local function CreateSimpleMenu()
         modeButton.Text = "AntiAim Mode: " .. Config.AntiAimMode
     end)
     
-    -- Add toggles
     AddToggle("BunnyHop", "BunnyHop", 0)
     AddToggle("AntiAim", "AntiAim", 30)
     AddToggle("ESP", "ESP", 55)
     
-    -- Info text
     local info = Instance.new("TextLabel")
     info.Size = UDim2.new(1, 0, 0, 40)
     info.Position = UDim2.new(0, 0, 1, -40)
-    info.Text = "Press DEL to hide\nAll features working"
+    info.Text = "HeadDown: Only head tilts down\nBody stays upright"
     info.TextColor3 = Color3.fromRGB(150, 150, 200)
     info.BackgroundTransparency = 1
     info.TextSize = 10
@@ -113,7 +110,44 @@ local function CreateSimpleMenu()
     return mainGUI
 end
 
--- Working BunnyHop
+-- Fixed AntiAim with Head Down only
+local function StartAntiAim()
+    while true do
+        if Config.AntiAim and LocalPlayer.Character then
+            local character = LocalPlayer.Character
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            local root = character:FindFirstChild("HumanoidRootPart")
+            local head = character:FindFirstChild("Head")
+            
+            if humanoid and root then
+                humanoid.AutoRotate = false
+                
+                if Config.AntiAimMode == "Random" then
+                    -- Random body rotation
+                    local randomAngle = math.random(0, 360)
+                    character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, math.rad(randomAngle), 0))
+                    
+                elseif Config.AntiAimMode == "HeadDown" then
+                    -- ТОЛЬКО голова вниз, тело прямо
+                    if head then
+                        -- Тело остается прямым
+                        character:SetPrimaryPartCFrame(CFrame.new(root.Position))
+                        -- Голова наклоняется вниз на 60 градусов
+                        head.CFrame = root.CFrame * CFrame.Angles(math.rad(60), 0, 0)
+                    end
+                    
+                elseif Config.AntiAimMode == "Spin" then
+                    -- Spinbot всего тела
+                    local spin = tick() * 6
+                    character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, spin, 0))
+                end
+            end
+        end
+        wait()
+    end
+end
+
+-- BunnyHop
 local function StartBunnyHop()
     while true do
         if Config.BunnyHop and LocalPlayer.Character then
@@ -126,33 +160,7 @@ local function StartBunnyHop()
     end
 end
 
--- Working AntiAim
-local function StartAntiAim()
-    while true do
-        if Config.AntiAim and LocalPlayer.Character then
-            local character = LocalPlayer.Character
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            local root = character:FindFirstChild("HumanoidRootPart")
-            
-            if humanoid and root then
-                humanoid.AutoRotate = false
-                
-                if Config.AntiAimMode == "Random" then
-                    local randomAngle = math.random(0, 360)
-                    character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, math.rad(randomAngle), 0))
-                elseif Config.AntiAimMode == "BodyDown" then
-                    character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(math.rad(80), 0, 0))
-                elseif Config.AntiAimMode == "Spin" then
-                    local spin = tick() * 6
-                    character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, spin, 0))
-                end
-            end
-        end
-        wait()
-    end
-end
-
--- Simple ESP
+-- ESP
 local function StartESP()
     local highlights = {}
     
@@ -177,7 +185,6 @@ local function StartESP()
                 end
             end
         else
-            -- Clear ESP when disabled
             for player, highlight in pairs(highlights) do
                 highlight:Destroy()
             end
@@ -187,7 +194,7 @@ local function StartESP()
     end
 end
 
--- Toggle menu with DEL
+-- Menu toggle
 local function SetupToggle(menu)
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.Delete then
@@ -196,53 +203,28 @@ local function SetupToggle(menu)
     end)
 end
 
--- Main injection function
+-- Main injection
 local function InjectNeverlose()
     print("NEVERLOSE v1111 Injecting...")
     
-    -- Create menu
     local menu = CreateSimpleMenu()
-    
-    -- Setup toggle
     SetupToggle(menu)
     
-    -- Start features in separate threads
     coroutine.wrap(StartBunnyHop)()
     coroutine.wrap(StartAntiAim)()
     coroutine.wrap(StartESP)()
     
     print("NEVERLOSE v1111 Successfully Injected!")
-    print("Features: BunnyHop, AntiAim, ESP")
-    print("Press DEL to hide/show menu")
+    print("HeadDown mode: Only head tilts down")
     
     return true
 end
 
--- Safe injection
+-- Safe execute
 local success, err = pcall(InjectNeverlose)
 
 if success then
-    print("🎯 NEVERLOSE v1111 READY FOR USE!")
+    print("🎯 NEVERLOSE v1111 READY! HeadDown mode fixed")
 else
-    print("❌ Injection failed: " .. tostring(err))
-    
-    -- Fallback simple injection
-    local simpleGUI = Instance.new("ScreenGui")
-    simpleGUI.Parent = CoreGui
-    
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 250, 0, 100)
-    frame.Position = UDim2.new(0.5, -125, 0, 10)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    frame.Parent = simpleGUI
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.Text = "NEVERLOSE v1111\nINJECTED\nUse executor functions"
-    label.TextColor3 = Color3.fromRGB(0, 255, 255)
-    label.BackgroundTransparency = 1
-    label.TextScaled = true
-    label.Parent = frame
-    
-    print("🔄 NEVERLOSE v1111 Fallback Loaded")
+    print("❌ Error: " .. tostring(err))
 end
