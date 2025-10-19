@@ -1,68 +1,45 @@
---[[
-Универсальный загрузчик скриптов для Roblox
-Решает ошибку "attempt to call a nil value"
---]]
+-- Максимально простой Anti-Aim скрипт
+-- Без сложных вызовов, только базовые функции
 
--- A. Проверка доступных функций загрузки
-local function SafeLoadScript(url)
-    -- 1. Проверяем наличие game:HttpGet
-    if game and game.HttpGet then
-        local success, result = pcall(function()
-            return game:HttpGet(url)
-        end)
-        if success then return result end
-    end
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- A. Базовая настройка
+local config = {
+    enabled = true,
+    mode = "backward"
+}
+
+-- B. Простая функция Anti-Aim
+local function simpleAA()
+    if not config.enabled then return end
+    if not player.Character then return end
     
-    -- 2. Проверяем наличие syn.request
-    if syn and syn.request then
-        local response = syn.request({
-            Url = url,
-            Method = "GET"
-        })
-        if response.Body then return response.Body end
-    end
+    local char = player.Character
+    local humanoid = char:FindFirstChild("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart")
     
-    -- 3. Альтернативные методы
-    if http_request then
-        local response = http_request({Url = url, Method = "GET"})
-        if response.Body then return response.Body end
-    end
+    -- 1. Проверяем необходимые части
+    if not humanoid then return end
+    if not root then return end
     
-    error("Не удалось загрузить скрипт")
+    -- 2. Отключаем авто-поворот
+    humanoid.AutoRotate = false
+    
+    -- 3. Применяем простой Anti-Aim
+    if config.mode == "backward" then
+        humanoid.CameraOffset = Vector3.new(0, -0.3, 0)
+        char:SetPrimaryPartCFrame(CFrame.new(root.Position, root.Position - root.CFrame.LookVector))
+    end
 end
 
--- B. Безопасное выполнение кода
-local function ExecuteSecure(code)
-    -- 1. Создаем защищенное окружение
-    local env = {}
-    setmetatable(env, {__index = _G})
-    
-    -- 2. Загружаем код с обработкой ошибок
-    local fn, loadError = loadstring(code)
-    if not fn then
-        error("Ошибка загрузки: " .. tostring(loadError))
-    end
-    
-    -- 3. Выполняем в изолированном окружении
-    setfenv(fn, env)
-    local success, execError = pcall(fn)
+-- C. Запуск скрипта
+while true do
+    local success, error = pcall(simpleAA)
     if not success then
-        error("Ошибка выполнения: " .. tostring(execError))
+        -- Просто игнорируем ошибки и продолжаем
     end
+    wait(0.1)
 end
 
--- C. Основная функция загрузки
-local function LoadFromGitHub()
-    local githubUrl = "https://raw.githubusercontent.com/your_username/your_repo/main/script.lua"
-    
-    -- 1. Загружаем код
-    local scriptCode = SafeLoadScript(githubUrl)
-    
-    -- 2. Выполняем код
-    ExecuteSecure(scriptCode)
-    
-    print("Скрипт успешно загружен и выполнен")
-end
-
--- Запускаем загрузку
-LoadFromGitHub()
+print("Скрипт запущен")
