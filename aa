@@ -1,0 +1,72 @@
+--[[
+Roblox Lua Script - Custom Anti-Aim
+Создано для выживания
+--]]
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+-- Конфигурация Anti-Aim
+local AA_Config = {
+    Enabled = true,
+    Pitch = "Down", -- "Down", "Up", "Zero"
+    Yaw = "Backward", -- "Backward", "Forward", "Spin"
+    SpinSpeed = 50,
+    JitterRange = 30,
+    DesyncAmount = 60
+}
+
+-- Основные функции
+local function ApplyAntiAim(character)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        -- A. Управление Pitch (Наклон головы вверх/вниз)
+        if AA_Config.Pitch == "Down" then
+            humanoid.CameraOffset = Vector3.new(0, -0.5, 0)
+        elseif AA_Config.Pitch == "Up" then
+            humanoid.CameraOffset = Vector3.new(0, 0.5, 0)
+        else
+            humanoid.CameraOffset = Vector3.new(0, 0, 0)
+        end
+
+        -- B. Управление Yaw (Поворот тела)
+        if AA_Config.Yaw == "Backward" then
+            humanoid.AutoRotate = false
+            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position, character.PrimaryPart.Position - character.PrimaryPart.CFrame.LookVector))
+        elseif AA_Config.Yaw == "Spin" then
+            humanoid.AutoRotate = false
+            local spinAngle = tick() * AA_Config.SpinSpeed
+            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position) * CFrame.Angles(0, spinAngle, 0))
+        end
+
+        -- C. Джиттер и десинхронизация
+        if AA_Config.Yaw == "Jitter" then
+            humanoid.AutoRotate = false
+            local jitter = math.sin(tick() * 10) * AA_Config.JitterRange
+            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position) * CFrame.Angles(0, math.rad(jitter), 0))
+        end
+    end
+end
+
+-- Цикл обновления
+local AA_Connection
+AA_Connection = RunService.Heartbeat:Connect(function()
+    if AA_Config.Enabled then
+        local character = LocalPlayer.Character
+        if character and character.PrimaryPart then
+            ApplyAntiAim(character)
+        end
+    end
+end)
+
+-- Функция для обновления конфигурации
+local function UpdateConfig(newConfig)
+    AA_Config = newConfig
+end
+
+-- Инжект в окружение для доступа из консоли
+getgenv().AA_Config = AA_Config
+getgenv().UpdateAAConfig = UpdateConfig
+
+print("Anti-Aim скрипт активирован. Используйте AA_Config для настройки.")
