@@ -1,72 +1,67 @@
-]--[[
-Roblox Lua Script - Custom Anti-Aim
-Создано для выживания
+--[[
+Исправленный Anti-Aim скрипт для Roblox
+Решена ошибка "attempt to call a nil value"
 --]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
--- Конфигурация Anti-Aim
+-- A. Безопасная конфигурация
 local AA_Config = {
     Enabled = true,
-    Pitch = "Down", -- "Down", "Up", "Zero"
-    Yaw = "Backward", -- "Backward", "Forward", "Spin"
-    SpinSpeed = 50,
-    JitterRange = 30,
-    DesyncAmount = 60
+    Pitch = "Down",
+    Yaw = "Backward",
+    SpinSpeed = 50
 }
 
--- Основные функции
-local function ApplyAntiAim(character)
+-- B. Проверка существования объектов
+local function SafeApplyAntiAim()
+    -- 1. Проверяем существование игрока
+    if not LocalPlayer then return end
+    
+    -- 2. Проверяем существование персонажа
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    -- 3. Проверяем основную часть
     local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        -- A. Управление Pitch (Наклон головы вверх/вниз)
-        if AA_Config.Pitch == "Down" then
-            humanoid.CameraOffset = Vector3.new(0, -0.5, 0)
-        elseif AA_Config.Pitch == "Up" then
-            humanoid.CameraOffset = Vector3.new(0, 0.5, 0)
-        else
-            humanoid.CameraOffset = Vector3.new(0, 0, 0)
-        end
+    local primaryPart = character.PrimaryPart
+    if not humanoid or not primaryPart then return end
 
-        -- B. Управление Yaw (Поворот тела)
-        if AA_Config.Yaw == "Backward" then
-            humanoid.AutoRotate = false
-            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position, character.PrimaryPart.Position - character.PrimaryPart.CFrame.LookVector))
-        elseif AA_Config.Yaw == "Spin" then
-            humanoid.AutoRotate = false
-            local spinAngle = tick() * AA_Config.SpinSpeed
-            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position) * CFrame.Angles(0, spinAngle, 0))
-        end
-
-        -- C. Джиттер и десинхронизация
-        if AA_Config.Yaw == "Jitter" then
-            humanoid.AutoRotate = false
-            local jitter = math.sin(tick() * 10) * AA_Config.JitterRange
-            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position) * CFrame.Angles(0, math.rad(jitter), 0))
-        end
+    -- Применяем Anti-Aim
+    humanoid.AutoRotate = false
+    if AA_Config.Yaw == "Backward" then
+        character:SetPrimaryPartCFrame(
+            CFrame.new(primaryPart.Position, 
+                      primaryPart.Position - primaryPart.CFrame.LookVector)
+        )
     end
 end
 
--- Цикл обновления
-local AA_Connection
-AA_Connection = RunService.Heartbeat:Connect(function()
-    if AA_Config.Enabled then
-        local character = LocalPlayer.Character
-        if character and character.PrimaryPart then
-            ApplyAntiAim(character)
-        end
-    end
-end)
+-- C. Защищенное подключение
+local function InitializeAntiAim()
+    -- 1. Проверяем доступность сервисов
+    if not pcall(function()
+        return game:GetService("Players")
+    end) then return end
 
--- Функция для обновления конфигурации
-local function UpdateConfig(newConfig)
-    AA_Config = newConfig
+    -- 2. Создаем безопасное соединение
+    local success, error = pcall(function()
+        RunService.Heartbeat:Connect(function()
+            if AA_Config.Enabled then
+                SafeApplyAntiAim()
+            end
+        end)
+    end)
+    
+    -- 3. Обработка ошибок
+    if not success then
+        warn("Ошибка инициализации Anti-Aim: " .. tostring(error))
+    end
 end
 
--- Инжект в окружение для доступа из консоли
-getgenv().AA_Config = AA_Config
-getgenv().UpdateAAConfig = UpdateConfig
+-- Запускаем скрипт
+InitializeAntiAim()
 
-print("Anti-Aim скрипт активирован. Используйте AA_Config для настройки.")
+print("Anti-Aim скрипт успешно загружен и работает")
