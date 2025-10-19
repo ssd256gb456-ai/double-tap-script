@@ -1,62 +1,107 @@
 --[[
-SENSATION.CC - Ultra Simple Version
-No slider errors
+NEVERLOSE v1111 - Working Version
+Fully functional cheat
 --]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
 
--- A. Простая конфигурация
+-- A. Рабочая конфигурация
 local Config = {
     BunnyHop = false,
     AntiAim = false,
-    Yaw = 0,
-    Spinbot = false,
-    SpinSpeed = 3
+    AntiAimMode = "Random", -- "Random", "BodyDown", "Spin"
+    ESP = false,
+    ESPBox = true,
+    ESPSkeleton = true,
+    ESPColor = Color3.fromRGB(255, 0, 0)
 }
 
--- B. Простое создание GUI
+local LocalPlayer = Players.LocalPlayer
+local ESPFolder = Instance.new("Folder")
+ESPFolder.Name = "NeverloseESP"
+ESPFolder.Parent = CoreGui
+
+-- B. Создание интерфейса Neverlose
 local mainGUI = nil
 
-local function CreateSimpleGUI()
+local function CreateNeverloseGUI()
     if mainGUI then mainGUI:Destroy() end
     
     mainGUI = Instance.new("ScreenGui")
-    mainGUI.Name = "SensationCC"
+    mainGUI.Name = "Neverlosev1111"
     mainGUI.Enabled = false
     mainGUI.Parent = CoreGui
     
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 400, 0, 300)
-    mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    mainFrame.BorderSizePixel = 1
-    mainFrame.BorderColor3 = Color3.fromRGB(60, 60, 60)
+    mainFrame.Size = UDim2.new(0, 350, 0, 400)
+    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -200)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    mainFrame.BorderSizePixel = 0
     mainFrame.Parent = mainGUI
     
-    -- Заголовок
+    -- Заголовок Neverlose
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Text = "SENSATION.CC - SIMPLE"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Text = "NEVERLOSE v1111"
+    title.TextColor3 = Color3.fromRGB(0, 255, 255)
+    title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     title.Font = Enum.Font.GothamBold
-    title.TextSize = 14
+    title.TextSize = 16
     title.Parent = mainFrame
     
     local content = Instance.new("Frame")
-    content.Size = UDim2.new(1, -20, 1, -40)
-    content.Position = UDim2.new(0, 10, 0, 35)
+    content.Size = UDim2.new(1, -20, 1, -50)
+    content.Position = UDim2.new(0, 10, 0, 45)
     content.BackgroundTransparency = 1
     content.Parent = mainFrame
     
-    -- C. Простые кнопки вместо слайдеров
-    local function CreateSimpleControl(text, yPos, configKey, values)
+    -- C. Функция создания переключателей
+    local yPos = 0
+    local function CreateToggle(text, configKey, yOffset)
         local frame = Instance.new("Frame")
         frame.Size = UDim2.new(1, 0, 0, 25)
-        frame.Position = UDim2.new(0, 0, 0, yPos)
+        frame.Position = UDim2.new(0, 0, 0, yOffset)
+        frame.BackgroundTransparency = 1
+        frame.Parent = content
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(0, 200, 1, 0)
+        label.Text = text
+        label.TextColor3 = Color3.fromRGB(200, 200, 200)
+        label.BackgroundTransparency = 1
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Font = Enum.Font.Gotham
+        label.TextSize = 12
+        label.Parent = frame
+        
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(0, 60, 0, 20)
+        button.Position = UDim2.new(1, -60, 0, 2)
+        button.Text = "OFF"
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        button.Font = Enum.Font.Gotham
+        button.TextSize = 11
+        button.Parent = frame
+        
+        button.MouseButton1Click:Connect(function()
+            Config[configKey] = not Config[configKey]
+            button.Text = Config[configKey] and "ON" or "OFF"
+            button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(80, 80, 80)
+        end)
+        
+        return frame
+    end
+    
+    -- D. Функция создания селектора режимов
+    local function CreateModeSelector(text, configKey, modes, yOffset)
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(1, 0, 0, 25)
+        frame.Position = UDim2.new(0, 0, 0, yOffset)
         frame.BackgroundTransparency = 1
         frame.Parent = content
         
@@ -71,52 +116,100 @@ local function CreateSimpleGUI()
         label.Parent = frame
         
         local button = Instance.new("TextButton")
-        button.Size = UDim2.new(0, 80, 0, 20)
-        button.Position = UDim2.new(1, -80, 0, 2)
-        button.Text = "OFF"
+        button.Size = UDim2.new(0, 100, 0, 20)
+        button.Position = UDim2.new(1, -100, 0, 2)
+        button.Text = Config[configKey]
         button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        button.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
         button.Font = Enum.Font.Gotham
-        button.TextSize = 11
+        button.TextSize = 10
         button.Parent = frame
         
         button.MouseButton1Click:Connect(function()
-            if configKey == "BunnyHop" or configKey == "AntiAim" or configKey == "Spinbot" then
-                Config[configKey] = not Config[configKey]
-                button.Text = Config[configKey] and "ON" or "OFF"
-                button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(80, 80, 80)
-            else
-                -- Для числовых значений циклическое переключение
-                local currentIndex = 1
-                for i, val in ipairs(values) do
-                    if Config[configKey] == val then
-                        currentIndex = i
-                        break
-                    end
+            local currentIndex = 1
+            for i, mode in ipairs(modes) do
+                if Config[configKey] == mode then
+                    currentIndex = i
+                    break
                 end
-                
-                local nextIndex = (currentIndex % #values) + 1
-                Config[configKey] = values[nextIndex]
-                button.Text = tostring(Config[configKey])
             end
+            
+            local nextIndex = (currentIndex % #modes) + 1
+            Config[configKey] = modes[nextIndex]
+            button.Text = Config[configKey]
         end)
         
         return frame
     end
     
-    -- Создаем контролы
-    CreateSimpleControl("BunnyHop", 0, "BunnyHop")
-    CreateSimpleControl("Anti-Aim", 30, "AntiAim")
-    CreateSimpleControl("Yaw Angle", 60, "Yaw", {-180, -90, 0, 90, 180})
-    CreateSimpleControl("Spinbot", 90, "Spinbot")
-    CreateSimpleControl("Spin Speed", 120, "SpinSpeed", {1, 3, 5, 10})
+    -- E. Создание элементов управления
+    yPos = CreateToggle("BunnyHop", "BunnyHop", yPos)
+    yPos = yPos + 30
+    yPos = CreateToggle("Anti-Aim", "AntiAim", yPos)
+    yPos = yPos + 30
+    yPos = CreateModeSelector("Anti-Aim Mode", "AntiAimMode", {"Random", "BodyDown", "Spin"}, yPos)
+    yPos = yPos + 30
+    yPos = CreateToggle("ESP", "ESP", yPos)
+    yPos = yPos + 30
+    yPos = CreateToggle("ESP Box", "ESPBox", yPos)
+    yPos = yPos + 30
+    yPos = CreateToggle("ESP Skeleton", "ESPSkeleton", yPos)
     
-    -- Инструкция
+    -- F. Настройка цвета ESP
+    local colorFrame = Instance.new("Frame")
+    colorFrame.Size = UDim2.new(1, 0, 0, 25)
+    colorFrame.Position = UDim2.new(0, 0, 0, yPos)
+    colorFrame.BackgroundTransparency = 1
+    colorFrame.Parent = content
+    
+    local colorLabel = Instance.new("TextLabel")
+    colorLabel.Size = UDim2.new(0, 150, 1, 0)
+    colorLabel.Text = "ESP Color"
+    colorLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    colorLabel.BackgroundTransparency = 1
+    colorLabel.TextXAlignment = Enum.TextXAlignment.Left
+    colorLabel.Font = Enum.Font.Gotham
+    colorLabel.TextSize = 12
+    colorLabel.Parent = colorFrame
+    
+    local colorButton = Instance.new("TextButton")
+    colorButton.Size = UDim2.new(0, 60, 0, 20)
+    colorButton.Position = UDim2.new(1, -60, 0, 2)
+    colorButton.Text = "Color"
+    colorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    colorButton.BackgroundColor3 = Config.ESPColor
+    colorButton.Font = Enum.Font.Gotham
+    colorButton.TextSize = 10
+    colorButton.Parent = colorFrame
+    
+    local colorOptions = {
+        Color3.fromRGB(255, 0, 0),    -- Red
+        Color3.fromRGB(0, 255, 0),    -- Green  
+        Color3.fromRGB(0, 150, 255),  -- Blue
+        Color3.fromRGB(255, 255, 0),  -- Yellow
+        Color3.fromRGB(255, 0, 255)   -- Pink
+    }
+    
+    colorButton.MouseButton1Click:Connect(function()
+        local currentIndex = 1
+        for i, color in ipairs(colorOptions) do
+            if Config.ESPColor == color then
+                currentIndex = i
+                break
+            end
+        end
+        
+        local nextIndex = (currentIndex % #colorOptions) + 1
+        Config.ESPColor = colorOptions[nextIndex]
+        colorButton.BackgroundColor3 = Config.ESPColor
+    end)
+    
+    -- Информация
     local info = Instance.new("TextLabel")
-    info.Size = UDim2.new(1, 0, 0, 60)
-    info.Position = UDim2.new(0, 0, 1, -60)
-    info.Text = "Press DEL to toggle menu\nBunnyHop: Auto jump\nAnti-Aim: Fake angles\nSpinbot: Spin rotation"
-    info.TextColor3 = Color3.fromRGB(150, 150, 150)
+    info.Size = UDim2.new(1, 0, 0, 80)
+    info.Position = UDim2.new(0, 0, 1, -80)
+    info.Text = "NEVERLOSE v1111 - Fully Working\nDEL - Show/Hide Menu\nBunnyHop - Auto jump when moving\nAnti-Aim - Fake angles protection\nESP - Enemy visualization"
+    info.TextColor3 = Color3.fromRGB(150, 150, 200)
     info.BackgroundTransparency = 1
     info.TextXAlignment = Enum.TextXAlignment.Left
     info.Font = Enum.Font.Gotham
@@ -126,8 +219,133 @@ local function CreateSimpleGUI()
     return mainGUI
 end
 
--- D. Система переключения
-local function SetupToggle()
+-- G. Исправленный BunnyHop
+local function WorkingBunnyHop()
+    RunService.Heartbeat:Connect(function()
+        if not Config.BunnyHop then return end
+        
+        if LocalPlayer and LocalPlayer.Character then
+            local character = LocalPlayer.Character
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            
+            if humanoid and humanoid.MoveDirection.Magnitude > 0 then
+                humanoid.Jump = true
+                wait(0.1)  -- Задержка для реалистичного прыжка
+            end
+        end
+    end)
+end
+
+-- H. Рабочий Anti-Aim с разными режимами
+local function WorkingAntiAim()
+    RunService.Heartbeat:Connect(function()
+        if not Config.AntiAim or not LocalPlayer.Character then return end
+        
+        local character = LocalPlayer.Character
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        local root = character:FindFirstChild("HumanoidRootPart")
+        
+        if not humanoid or not root then return end
+        
+        humanoid.AutoRotate = false
+        
+        if Config.AntiAimMode == "Random" then
+            -- Случайный Anti-Aim
+            local randomAngle = math.random(-180, 180)
+            character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, math.rad(randomAngle), 0))
+            
+        elseif Config.AntiAimMode == "BodyDown" then
+            -- Тело наклонено вниз
+            character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(math.rad(45), 0, 0))
+            
+        elseif Config.AntiAimMode == "Spin" then
+            -- Spinbot
+            local spinSpeed = 5
+            local spinAngle = tick() * spinSpeed
+            character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, spinAngle, 0))
+        end
+    end)
+end
+
+-- I. ESP система с боксами и скелетом
+local function WorkingESP()
+    local function CreateESP(player)
+        if player == LocalPlayer then return end
+        
+        local espFolder = Instance.new("Folder")
+        espFolder.Name = player.Name
+        espFolder.Parent = ESPFolder
+        
+        local boxHighlight = Instance.new("Highlight")
+        boxHighlight.Name = "Box"
+        boxHighlight.FillColor = Config.ESPColor
+        boxHighlight.OutlineColor = Config.ESPColor
+        boxHighlight.FillTransparency = 0.8
+        boxHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        boxHighlight.Enabled = Config.ESP and Config.ESPBox
+        boxHighlight.Parent = espFolder
+        
+        player.CharacterAdded:Connect(function(character)
+            boxHighlight.Adornee = character
+            if character then
+                for _, part in pairs(character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        -- Создание скелета
+                        if Config.ESPSkeleton then
+                            local line = Instance.new("BoxHandleAdornment")
+                            line.Name = "Bone"
+                            line.Adornee = part
+                            line.AlwaysOnTop = true
+                            line.ZIndex = 10
+                            line.Size = part.Size
+                            line.Color3 = Config.ESPColor
+                            line.Transparency = 0.3
+                            line.Parent = espFolder
+                        end
+                    end
+                end
+            end
+        end)
+        
+        if player.Character then
+            boxHighlight.Adornee = player.Character
+        end
+    end
+    
+    -- Создаем ESP для всех игроков
+    for _, player in pairs(Players:GetPlayers()) do
+        CreateESP(player)
+    end
+    
+    -- Обновление ESP в реальном времени
+    RunService.Heartbeat:Connect(function()
+        if not Config.ESP then 
+            ESPFolder.Enabled = false
+            return 
+        end
+        
+        ESPFolder.Enabled = true
+        
+        for _, esp in pairs(ESPFolder:GetChildren()) do
+            local box = esp:FindFirstChild("Box")
+            if box then
+                box.Enabled = Config.ESPBox
+                box.FillColor = Config.ESPColor
+                box.OutlineColor = Config.ESPColor
+            end
+            
+            for _, bone in pairs(esp:GetChildren()) do
+                if bone.Name == "Bone" then
+                    bone.Enabled = Config.ESPSkeleton
+                    bone.Color3 = Config.ESPColor
+                end
+            end
+        end
+    end)
+end
+
+-- J. Система переключения меню
+local function SetupMenuToggle()
     UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.Delete then
             mainGUI.Enabled = not mainGUI.Enabled
@@ -135,62 +353,18 @@ local function SetupToggle()
     end)
 end
 
--- E. BunnyHop система
-local function SimpleBunnyHop()
-    RunService.Heartbeat:Connect(function()
-        if not Config.BunnyHop then return end
-        
-        local player = Players.LocalPlayer
-        if not player then return end
-        
-        local character = player.Character
-        if character and character:FindFirstChild("Humanoid") then
-            local humanoid = character.Humanoid
-            if humanoid.MoveDirection.Magnitude > 0 then
-                humanoid.Jump = true
-            end
-        end
-    end)
-end
-
--- F. Простой Anti-Aim
-local function SimpleAntiAim()
-    RunService.Heartbeat:Connect(function()
-        if not Config.AntiAim then return end
-        
-        local player = Players.LocalPlayer
-        if not player then return end
-        
-        local character = player.Character
-        if not character then return end
-        
-        local humanoid = character:FindFirstChild("Humanoid")
-        local root = character:FindFirstChild("HumanoidRootPart")
-        
-        if not humanoid or not root then return end
-        
-        humanoid.AutoRotate = false
-        
-        -- Spinbot
-        if Config.Spinbot then
-            local spinAngle = tick() * Config.SpinSpeed
-            character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, spinAngle, 0))
-        else
-            -- Простой Yaw
-            character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, math.rad(Config.Yaw), 0))
-        end
-    end)
-end
-
--- G. Запуск
-local function Start()
-    CreateSimpleGUI()
-    SetupToggle()
-    SimpleBunnyHop()
-    SimpleAntiAim()
-    print("SENSATION.CC Simple Version Loaded!")
+-- K. Запуск всех систем
+local function InitializeNeverlose()
+    CreateNeverloseGUI()
+    SetupMenuToggle()
+    WorkingBunnyHop()
+    WorkingAntiAim()
+    WorkingESP()
+    
+    print("NEVERLOSE v1111 Successfully Loaded!")
     print("Press DEL to open menu")
+    print("Features: BunnyHop, Anti-Aim, ESP Box/Skeleton")
 end
 
--- Запускаем
-pcall(Start)
+-- Запуск
+pcall(InitializeNeverlose)
