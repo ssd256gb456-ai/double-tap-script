@@ -1,363 +1,573 @@
--- NEVERLOSE v1111 - Advanced Anti-Aim Configuration
--- Full Yaw, Jitter, and Fake settings
+-- PUZAN LUA DT System + AntiAim - Roblox Studio
+-- Вставь в LocalScript в StarterPlayerScripts
 
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
-local Config = {
-    -- BunnyHop
-    BunnyHop = false,
-    BunnyHopSpeed = 1.3,
-    
-    -- Anti-Aim
-    AntiAim = false,
-    AntiAimMode = "Yaw",
-    
-    -- Yaw Settings
-    YawEnabled = true,
-    YawAngle = 60,
-    YawSpeed = 5,
-    BodyYaw = "None", -- "None", "Static", "Jitter"
-    MoveDirRotation = 1,
-    
-    -- Jitter Settings
-    HeadFakeOffset = 0,
-    YawFakeOffset = 0,
-    YawJitter = 5,
-    HeadJitter = 0,
-    FakeRate = 5,
-    
-    -- ESP
-    ESP = false
+-- Настройки телепортации
+local currentBind = Enum.UserInputType.MouseButton1
+local listeningForBind = false
+local lastActionTime = 0
+local actionCooldown = 0.3
+local isProcessing = false
+local teleportDistance = 10 -- Увеличено до 10 studs
+
+-- Настройки TrashTalk
+local trashTalkEnabled = false
+local spamThread = nil
+local trashTalkPhrases = {
+    "1"
 }
 
-local LocalPlayer = Players.LocalPlayer
+-- Настройки AntiAim
+local antiAimEnabled = false
+local antiAimThread = nil
+local antiAimTypes = {
+    "Jitter",
+    "Spin",
+    "Random",
+    "Backwards",
+    "Sideways"
+}
+local currentAntiAimType = "Jitter"
+local antiAimSpeed = 5
+local antiAimIntensity = 30
 
--- Advanced GUI with all Anti-Aim settings
-local function CreateAdvancedMenu()
-    local mainGUI = Instance.new("ScreenGui")
-    mainGUI.Name = "Neverlosev1111"
-    mainGUI.Parent = CoreGui
-    
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 350, 0, 400)
-    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -200)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Parent = mainGUI
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Text = "NEVERLOSE v1111 - ADVANCED AA"
-    title.TextColor3 = Color3.fromRGB(0, 255, 255)
-    title.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 14
-    title.Parent = mainFrame
-    
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(1, -10, 1, -40)
-    scrollFrame.Position = UDim2.new(0, 5, 0, 35)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.ScrollBarThickness = 5
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
-    scrollFrame.Parent = mainFrame
-    
-    -- Toggle function
-    local function AddToggle(text, configKey, yPos)
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, 0, 0, 25)
-        button.Position = UDim2.new(0, 0, 0, yPos)
-        button.Text = text .. ": " .. (Config[configKey] and "ON" or "OFF")
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 100, 200) or Color3.fromRGB(50, 50, 60)
-        button.Font = Enum.Font.Gotham
-        button.TextSize = 12
-        button.Parent = scrollFrame
-        
-        button.MouseButton1Click:Connect(function()
-            Config[configKey] = not Config[configKey]
-            button.Text = text .. ": " .. (Config[configKey] and "ON" or "OFF")
-            button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 100, 200) or Color3.fromRGB(50, 50, 60)
-        end)
-        
-        return yPos + 30
+-- Ждем загрузки игрока
+local function waitForPlayer()
+    while not LocalPlayer do
+        wait(1)
+        LocalPlayer = Players.LocalPlayer
     end
-
-    -- Value selector function
-    local function AddValueSelector(text, configKey, values, yPos)
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, 0, 0, 25)
-        button.Position = UDim2.new(0, 0, 0, yPos)
-        button.Text = text .. ": " .. tostring(Config[configKey])
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        button.Font = Enum.Font.Gotham
-        button.TextSize = 11
-        button.Parent = scrollFrame
-        
-        button.MouseButton1Click:Connect(function()
-            local currentIndex = 1
-            for i, val in ipairs(values) do
-                if tostring(Config[configKey]) == tostring(val) then
-                    currentIndex = i
-                    break
-                end
-            end
-            
-            local nextIndex = (currentIndex % #values) + 1
-            Config[configKey] = values[nextIndex]
-            button.Text = text .. ": " .. tostring(Config[configKey])
-        end)
-        
-        return yPos + 30
-    end
-
-    -- Number selector function
-    local function AddNumberSelector(text, configKey, min, max, step, yPos)
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, 0, 0, 25)
-        button.Position = UDim2.new(0, 0, 0, yPos)
-        button.Text = text .. ": " .. tostring(Config[configKey])
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
-        button.Font = Enum.Font.Gotham
-        button.TextSize = 11
-        button.Parent = scrollFrame
-        
-        button.MouseButton1Click:Connect(function()
-            local newValue = Config[configKey] + step
-            if newValue > max then
-                newValue = min
-            end
-            Config[configKey] = newValue
-            button.Text = text .. ": " .. tostring(Config[configKey])
-        end)
-        
-        return yPos + 30
-    end
-
-    local yPos = 0
-    
-    -- BunnyHop Section
-    yPos = AddToggle("BunnyHop", "BunnyHop", yPos)
-    yPos = AddNumberSelector("BunnyHop Speed", "BunnyHopSpeed", 1.1, 2.0, 0.1, yPos)
-    yPos = yPos + 10
-    
-    -- Anti-Aim Section
-    yPos = AddToggle("Anti-Aim", "AntiAim", yPos)
-    yPos = AddValueSelector("Anti-Aim Mode", "AntiAimMode", {"Yaw", "Jitter", "HeadDown", "Spin"}, yPos)
-    yPos = yPos + 10
-    
-    -- Yaw Settings Section
-    local yawLabel = Instance.new("TextLabel")
-    yawLabel.Size = UDim2.new(1, 0, 0, 20)
-    yawLabel.Position = UDim2.new(0, 0, 0, yPos)
-    yawLabel.Text = "--- Yaw Settings ---"
-    yawLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
-    yawLabel.BackgroundTransparency = 1
-    yawLabel.Font = Enum.Font.GothamBold
-    yawLabel.TextSize = 12
-    yawLabel.Parent = scrollFrame
-    yPos = yPos + 25
-    
-    yPos = AddToggle("Yaw Enabled", "YawEnabled", yPos)
-    yPos = AddValueSelector("Body Yaw", "BodyYaw", {"None", "Static", "Jitter"}, yPos)
-    yPos = AddNumberSelector("Yaw Angle", "YawAngle", -180, 180, 15, yPos)
-    yPos = AddNumberSelector("Yaw Speed", "YawSpeed", 1, 20, 1, yPos)
-    yPos = AddNumberSelector("MoveDir Rotation", "MoveDirRotation", 0, 5, 1, yPos)
-    yPos = yPos + 10
-    
-    -- Jitter Settings Section
-    local jitterLabel = Instance.new("TextLabel")
-    jitterLabel.Size = UDim2.new(1, 0, 0, 20)
-    jitterLabel.Position = UDim2.new(0, 0, 0, yPos)
-    jitterLabel.Text = "--- Jitter Settings ---"
-    jitterLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
-    jitterLabel.BackgroundTransparency = 1
-    jitterLabel.Font = Enum.Font.GothamBold
-    jitterLabel.TextSize = 12
-    jitterLabel.Parent = scrollFrame
-    yPos = yPos + 25
-    
-    yPos = AddNumberSelector("Head Fake Offset", "HeadFakeOffset", -50, 50, 5, yPos)
-    yPos = AddNumberSelector("Yaw Fake Offset", "YawFakeOffset", -50, 50, 5, yPos)
-    yPos = AddNumberSelector("Yaw Jitter", "YawJitter", 0, 20, 1, yPos)
-    yPos = AddNumberSelector("Head Jitter", "HeadJitter", 0, 20, 1, yPos)
-    yPos = AddNumberSelector("Fake Rate", "FakeRate", 1, 10, 1, yPos)
-    yPos = yPos + 10
-    
-    -- ESP Section
-    yPos = AddToggle("ESP", "ESP", yPos)
-    
-    -- Info
-    local info = Instance.new("TextLabel")
-    info.Size = UDim2.new(1, 0, 0, 60)
-    info.Position = UDim2.new(0, 0, 0, yPos)
-    info.Text = "DEL - Hide/Show Menu\nYaw: Body rotation\nJitter: Rapid angle changes\nFake: Fake head/body positions"
-    info.TextColor3 = Color3.fromRGB(150, 150, 200)
-    info.BackgroundTransparency = 1
-    info.TextSize = 10
-    info.Font = Enum.Font.Gotham
-    info.Parent = scrollFrame
-    
-    return mainGUI
 end
 
--- Advanced Anti-Aim with all features
-local function StartAdvancedAntiAim()
-    local jitterTime = 0
-    
-    while true do
-        if Config.AntiAim and LocalPlayer.Character then
-            local character = LocalPlayer.Character
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            local root = character:FindFirstChild("HumanoidRootPart")
-            local head = character:FindFirstChild("Head")
-            
-            if humanoid and root then
-                humanoid.AutoRotate = false
-                jitterTime = jitterTime + RunService.Heartbeat:Wait()
-                
-                if Config.AntiAimMode == "Yaw" and Config.YawEnabled then
-                    -- Yaw Anti-Aim
-                    local baseAngle = Config.YawAngle
-                    
-                    -- Body Yaw modifications
-                    if Config.BodyYaw == "Jitter" then
-                        baseAngle = baseAngle + math.sin(jitterTime * Config.YawSpeed) * Config.YawJitter
-                    elseif Config.BodyYaw == "Static" then
-                        baseAngle = Config.YawAngle
-                    end
-                    
-                    -- Apply Yaw rotation
-                    local yawCFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(baseAngle), 0)
-                    character:SetPrimaryPartCFrame(yawCFrame)
-                    
-                elseif Config.AntiAimMode == "Jitter" then
-                    -- Jitter Anti-Aim
-                    local jitterAngle = math.sin(jitterTime * Config.FakeRate) * Config.YawJitter
-                    local headJitter = math.cos(jitterTime * Config.FakeRate) * Config.HeadJitter
-                    
-                    -- Apply jitter to body
-                    character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, math.rad(jitterAngle), 0))
-                    
-                    -- Apply jitter to head
-                    if head then
-                        local headOffset = Config.HeadFakeOffset + headJitter
-                        head.CFrame = root.CFrame * CFrame.new(0, 1.5, 0) * CFrame.Angles(math.rad(headOffset), 0, 0)
-                    end
-                    
-                elseif Config.AntiAimMode == "HeadDown" then
-                    -- Head Down only
-                    character:SetPrimaryPartCFrame(CFrame.new(root.Position))
-                    if head then
-                        head.CFrame = root.CFrame * CFrame.new(0, 1.5, 0) * CFrame.Angles(math.rad(75), 0, 0)
-                    end
-                    
-                elseif Config.AntiAimMode == "Spin" then
-                    -- Spinbot
-                    local spin = tick() * Config.YawSpeed
-                    character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, spin, 0))
-                end
-                
-                -- Apply Fake Offsets
-                if Config.YawFakeOffset ~= 0 then
-                    local currentCFrame = root.CFrame
-                    root.CFrame = currentCFrame * CFrame.Angles(0, math.rad(Config.YawFakeOffset), 0)
-                end
+waitForPlayer()
+
+-- Ждем PlayerGui
+local function waitForPlayerGui()
+    while not LocalPlayer:FindFirstChild("PlayerGui") do
+        wait(1)
+    end
+end
+
+waitForPlayerGui()
+
+-- Создание GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PUZANLUA_DT_System"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = LocalPlayer.PlayerGui
+
+local indicator = Instance.new("TextLabel")
+indicator.Name = "DTIndicator"
+indicator.Size = UDim2.new(0, 60, 0, 30)
+indicator.Position = UDim2.new(0, 10, 0.5, -15)
+indicator.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+indicator.TextColor3 = Color3.fromRGB(255, 255, 255)
+indicator.Text = "DT"
+indicator.Font = Enum.Font.GothamBold
+indicator.TextSize = 16
+indicator.TextStrokeTransparency = 1
+indicator.Visible = true
+indicator.Parent = screenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 6)
+UICorner.Parent = indicator
+
+-- Основное меню
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 350, 0, 400)
+frame.Position = UDim2.new(0.5, -175, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Visible = false
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 8)
+frameCorner.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Text = "PUZAN LUA"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.Parent = frame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = title
+
+-- Секция телепортации
+local teleportSection = Instance.new("TextLabel")
+teleportSection.Size = UDim2.new(1, -20, 0, 20)
+teleportSection.Position = UDim2.new(0, 10, 0, 35)
+teleportSection.BackgroundTransparency = 1
+teleportSection.TextColor3 = Color3.fromRGB(200, 200, 200)
+teleportSection.Text = "TELEPORT"
+teleportSection.Font = Enum.Font.GothamBold
+teleportSection.TextSize = 11
+teleportSection.TextXAlignment = Enum.TextXAlignment.Left
+teleportSection.Parent = frame
+
+local bindLabel = Instance.new("TextLabel")
+bindLabel.Size = UDim2.new(1, -20, 0, 20)
+bindLabel.Position = UDim2.new(0, 10, 0, 55)
+bindLabel.BackgroundTransparency = 1
+bindLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+bindLabel.Text = "Bind: LMB"
+bindLabel.Font = Enum.Font.Gotham
+bindLabel.TextSize = 10
+bindLabel.TextXAlignment = Enum.TextXAlignment.Left
+bindLabel.Parent = frame
+
+local changeBind = Instance.new("TextButton")
+changeBind.Size = UDim2.new(1, -20, 0, 25)
+changeBind.Position = UDim2.new(0, 10, 0, 75)
+changeBind.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+changeBind.TextColor3 = Color3.fromRGB(255, 255, 255)
+changeBind.Text = "Change Bind"
+changeBind.Font = Enum.Font.Gotham
+changeBind.TextSize = 10
+changeBind.Parent = frame
+
+local distanceLabel = Instance.new("TextLabel")
+distanceLabel.Size = UDim2.new(1, -20, 0, 20)
+distanceLabel.Position = UDim2.new(0, 10, 0, 105)
+distanceLabel.BackgroundTransparency = 1
+distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+distanceLabel.Text = "Distance: 10 studs"
+distanceLabel.Font = Enum.Font.Gotham
+distanceLabel.TextSize = 10
+distanceLabel.TextXAlignment = Enum.TextXAlignment.Left
+distanceLabel.Parent = frame
+
+-- Секция TrashTalk
+local trashSection = Instance.new("TextLabel")
+trashSection.Size = UDim2.new(1, -20, 0, 20)
+trashSection.Position = UDim2.new(0, 10, 0, 130)
+trashSection.BackgroundTransparency = 1
+trashSection.TextColor3 = Color3.fromRGB(200, 200, 200)
+trashSection.Text = "TRASHTALK"
+trashSection.Font = Enum.Font.GothamBold
+trashSection.TextSize = 11
+trashSection.TextXAlignment = Enum.TextXAlignment.Left
+trashSection.Parent = frame
+
+local trashTalkButton = Instance.new("TextButton")
+trashTalkButton.Size = UDim2.new(1, -20, 0, 25)
+trashTalkButton.Position = UDim2.new(0, 10, 0, 150)
+trashTalkButton.BackgroundColor3 = Color3.fromRGB(80, 80, 160)
+trashTalkButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+trashTalkButton.Text = "TrashTalk: OFF"
+trashTalkButton.Font = Enum.Font.Gotham
+trashTalkButton.TextSize = 10
+trashTalkButton.Parent = frame
+
+-- Секция AntiAim
+local antiAimSection = Instance.new("TextLabel")
+antiAimSection.Size = UDim2.new(1, -20, 0, 20)
+antiAimSection.Position = UDim2.new(0, 10, 0, 185)
+antiAimSection.BackgroundTransparency = 1
+antiAimSection.TextColor3 = Color3.fromRGB(200, 200, 200)
+antiAimSection.Text = "ANTIAIM"
+antiAimSection.Font = Enum.Font.GothamBold
+antiAimSection.TextSize = 11
+antiAimSection.TextXAlignment = Enum.TextXAlignment.Left
+antiAimSection.Parent = frame
+
+local antiAimButton = Instance.new("TextButton")
+antiAimButton.Size = UDim2.new(1, -20, 0, 25)
+antiAimButton.Position = UDim2.new(0, 10, 0, 205)
+antiAimButton.BackgroundColor3 = Color3.fromRGB(160, 80, 80)
+antiAimButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+antiAimButton.Text = "AntiAim: OFF"
+antiAimButton.Font = Enum.Font.Gotham
+antiAimButton.TextSize = 10
+antiAimButton.Parent = frame
+
+local antiAimTypeLabel = Instance.new("TextLabel")
+antiAimTypeLabel.Size = UDim2.new(1, -20, 0, 20)
+antiAimTypeLabel.Position = UDim2.new(0, 10, 0, 235)
+antiAimTypeLabel.BackgroundTransparency = 1
+antiAimTypeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+antiAimTypeLabel.Text = "Type: Jitter"
+antiAimTypeLabel.Font = Enum.Font.Gotham
+antiAimTypeLabel.TextSize = 10
+antiAimTypeLabel.TextXAlignment = Enum.TextXAlignment.Left
+antiAimTypeLabel.Parent = frame
+
+local changeAntiAimType = Instance.new("TextButton")
+changeAntiAimType.Size = UDim2.new(1, -20, 0, 25)
+changeAntiAimType.Position = UDim2.new(0, 10, 0, 255)
+changeAntiAimType.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+changeAntiAimType.TextColor3 = Color3.fromRGB(255, 255, 255)
+changeAntiAimType.Text = "Change Type"
+changeAntiAimType.Font = Enum.Font.Gotham
+changeAntiAimType.TextSize = 10
+changeAntiAimType.Parent = frame
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(1, -20, 0, 20)
+speedLabel.Position = UDim2.new(0, 10, 0, 285)
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedLabel.Text = "Speed: 5"
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextSize = 10
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = frame
+
+local increaseSpeed = Instance.new("TextButton")
+increaseSpeed.Size = UDim2.new(0.48, -10, 0, 20)
+increaseSpeed.Position = UDim2.new(0, 10, 0, 305)
+increaseSpeed.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+increaseSpeed.TextColor3 = Color3.fromRGB(255, 255, 255)
+increaseSpeed.Text = "+ Speed"
+increaseSpeed.Font = Enum.Font.Gotham
+increaseSpeed.TextSize = 9
+increaseSpeed.Parent = frame
+
+local decreaseSpeed = Instance.new("TextButton")
+decreaseSpeed.Size = UDim2.new(0.48, -10, 0, 20)
+decreaseSpeed.Position = UDim2.new(0.52, 0, 0, 305)
+decreaseSpeed.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+decreaseSpeed.TextColor3 = Color3.fromRGB(255, 255, 255)
+decreaseSpeed.Text = "- Speed"
+decreaseSpeed.Font = Enum.Font.Gotham
+decreaseSpeed.TextSize = 9
+decreaseSpeed.Parent = frame
+
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(1, -20, 0, 25)
+closeButton.Position = UDim2.new(0, 10, 0, 335)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Text = "Close Menu"
+closeButton.Font = Enum.Font.Gotham
+closeButton.TextSize = 10
+closeButton.Parent = frame
+
+-- Добавляем закругления
+local function addCorner(obj, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius)
+    corner.Parent = obj
+end
+
+addCorner(changeBind, 4)
+addCorner(trashTalkButton, 4)
+addCorner(antiAimButton, 4)
+addCorner(changeAntiAimType, 4)
+addCorner(increaseSpeed, 3)
+addCorner(decreaseSpeed, 3)
+addCorner(closeButton, 4)
+
+-- Функции TrashTalk
+local function getRandomTrashTalk()
+    return "1"
+end
+
+local function sendToChat(message)
+    pcall(function()
+        local TextChatService = game:GetService("TextChatService")
+        if TextChatService then
+            local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+            if channel then
+                channel:SendAsync(message)
+                return
             end
         end
-    end
-end
-
--- BunnyHop with speed boost
-local function StartBunnyHop()
-    while true do
-        if Config.BunnyHop and LocalPlayer.Character then
-            local character = LocalPlayer.Character
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            
-            if humanoid then
-                humanoid.WalkSpeed = 16 * Config.BunnyHopSpeed
-                
-                if humanoid.MoveDirection.Magnitude > 0 then
-                    humanoid.Jump = true
-                end
+        
+        local events = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+        if events then
+            local sayMessage = events:FindFirstChild("SayMessageRequest")
+            if sayMessage then
+                sayMessage:FireServer(message, "All")
             end
-        else
-            if LocalPlayer.Character then
-                local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                if humanoid then
-                    humanoid.WalkSpeed = 16
-                end
-            end
-        end
-        wait(0.1)
-    end
-end
-
--- ESP System
-local function StartESP()
-    local highlights = {}
-    
-    while true do
-        if Config.ESP then
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character then
-                    if not highlights[player] then
-                        local highlight = Instance.new("Highlight")
-                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        highlight.FillTransparency = 0.8
-                        highlight.Parent = player.Character
-                        highlights[player] = highlight
-                    end
-                    highlights[player].Adornee = player.Character
-                end
-            end
-        else
-            for player, highlight in pairs(highlights) do
-                highlight:Destroy()
-            end
-            highlights = {}
-        end
-        wait(0.5)
-    end
-end
-
--- Menu toggle
-local function SetupToggle(menu)
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.Delete then
-            menu.Enabled = not menu.Enabled
         end
     end)
 end
 
--- Main injection
-local function InjectNeverlose()
-    print("NEVERLOSE v1111 Advanced AA Injecting...")
-    
-    local menu = CreateAdvancedMenu()
-    SetupToggle(menu)
-    
-    coroutine.wrap(StartBunnyHop)()
-    coroutine.wrap(StartAdvancedAntiAim)()
-    coroutine.wrap(StartESP)()
-    
-    print("NEVERLOSE v1111 Advanced AA Ready!")
-    print("Features: Yaw, Jitter, Fake Offsets, Body Yaw")
-    print("Use menu to configure all Anti-Aim settings")
-    
-    return true
+local function startSpam()
+    while trashTalkEnabled do
+        local message = getRandomTrashTalk()
+        sendToChat(message)
+        wait(0.5)
+    end
 end
 
--- Safe execute
-pcall(InjectNeverlose)
+-- Функции AntiAim
+local function jitterAntiAim()
+    while antiAimEnabled and currentAntiAimType == "Jitter" do
+        local character = LocalPlayer.Character
+        if character then
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                local randomAngle = math.random(-antiAimIntensity, antiAimIntensity)
+                rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(randomAngle), 0)
+            end
+        end
+        wait(1/antiAimSpeed)
+    end
+end
+
+local function spinAntiAim()
+    local angle = 0
+    while antiAimEnabled and currentAntiAimType == "Spin" do
+        local character = LocalPlayer.Character
+        if character then
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                angle = angle + antiAimSpeed
+                rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(angle), 0)
+            end
+        end
+        wait(1/60)
+    end
+end
+
+local function randomAntiAim()
+    while antiAimEnabled and currentAntiAimType == "Random" do
+        local character = LocalPlayer.Character
+        if character then
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                local randomAngle = math.random(0, 360)
+                rootPart.CFrame = CFrame.new(rootPart.Position) * CFrame.Angles(0, math.rad(randomAngle), 0)
+            end
+        end
+        wait(1/antiAimSpeed)
+    end
+end
+
+local function backwardsAntiAim()
+    while antiAimEnabled and currentAntiAimType == "Backwards" do
+        local character = LocalPlayer.Character
+        if character then
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(180), 0)
+            end
+        end
+        wait(1/antiAimSpeed)
+    end
+end
+
+local function sidewaysAntiAim()
+    while antiAimEnabled and currentAntiAimType == "Sideways" do
+        local character = LocalPlayer.Character
+        if character then
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(90), 0)
+            end
+        end
+        wait(1/antiAimSpeed)
+    end
+end
+
+local function startAntiAim()
+    if currentAntiAimType == "Jitter" then
+        antiAimThread = coroutine.create(jitterAntiAim)
+    elseif currentAntiAimType == "Spin" then
+        antiAimThread = coroutine.create(spinAntiAim)
+    elseif currentAntiAimType == "Random" then
+        antiAimThread = coroutine.create(randomAntiAim)
+    elseif currentAntiAimType == "Backwards" then
+        antiAimThread = coroutine.create(backwardsAntiAim)
+    elseif currentAntiAimType == "Sideways" then
+        antiAimThread = coroutine.create(sidewaysAntiAim)
+    end
+    if antiAimThread then
+        coroutine.resume(antiAimThread)
+    end
+end
+
+-- Функции телепортации
+local function checkWallCollision(startPos, endPos)
+    local character = LocalPlayer.Character
+    if not character then return false, endPos end
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {character}
+    local raycastResult = Workspace:Raycast(startPos, (endPos - startPos), raycastParams)
+    if raycastResult then
+        return true, raycastResult.Position
+    end
+    return false, endPos
+end
+
+local function getMoveDirection()
+    local character = LocalPlayer.Character
+    if not character then return Vector3.new(0, 0, 0) end
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return Vector3.new(0, 0, 0) end
+    local moveDirection = humanoid.MoveDirection
+    if moveDirection.Magnitude < 0.1 then
+        moveDirection = rootPart.CFrame.LookVector
+    end
+    return moveDirection.Unit
+end
+
+local function performSingleMove()
+    if isProcessing then return end
+    isProcessing = true
+    local currentTime = tick()
+    if currentTime - lastActionTime < actionCooldown then
+        isProcessing = false
+        return
+    end
+    lastActionTime = currentTime
+    
+    -- Анимация индикатора
+    local originalColor = indicator.BackgroundColor3
+    indicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    wait(0.1)
+    indicator.BackgroundColor3 = originalColor
+    
+    local character = LocalPlayer.Character
+    if not character then
+        isProcessing = false
+        return
+    end
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then
+        isProcessing = false
+        return
+    end
+    local direction = getMoveDirection()
+    if direction.Magnitude < 0.1 then
+        isProcessing = false
+        return
+    end
+    local startPos = rootPart.Position
+    local endPos = startPos + direction * teleportDistance
+    local hitWall, hitPosition = checkWallCollision(startPos, endPos)
+    if hitWall then
+        local safeDistance = 1.0
+        local moveVector = (hitPosition - startPos)
+        local moveDistance = math.max(0, moveVector.Magnitude - safeDistance)
+        if moveDistance > 0.5 then
+            local safePosition = startPos + direction * moveDistance
+            rootPart.CFrame = CFrame.new(safePosition, safePosition + direction)
+        end
+    else
+        rootPart.CFrame = CFrame.new(endPos, endPos + direction)
+    end
+    wait(0.1)
+    isProcessing = false
+end
+
+-- Обработчики кнопок
+changeBind.MouseButton1Click:Connect(function()
+    listeningForBind = true
+    bindLabel.Text = "Press any key..."
+end)
+
+trashTalkButton.MouseButton1Click:Connect(function()
+    trashTalkEnabled = not trashTalkEnabled
+    if trashTalkEnabled then
+        trashTalkButton.Text = "TrashTalk: ON"
+        trashTalkButton.BackgroundColor3 = Color3.fromRGB(60, 160, 60)
+        spamThread = coroutine.create(startSpam)
+        coroutine.resume(spamThread)
+    else
+        trashTalkButton.Text = "TrashTalk: OFF"
+        trashTalkButton.BackgroundColor3 = Color3.fromRGB(80, 80, 160)
+    end
+end)
+
+antiAimButton.MouseButton1Click:Connect(function()
+    antiAimEnabled = not antiAimEnabled
+    if antiAimEnabled then
+        antiAimButton.Text = "AntiAim: ON"
+        antiAimButton.BackgroundColor3 = Color3.fromRGB(60, 160, 60)
+        startAntiAim()
+    else
+        antiAimButton.Text = "AntiAim: OFF"
+        antiAimButton.BackgroundColor3 = Color3.fromRGB(160, 80, 80)
+    end
+end)
+
+changeAntiAimType.MouseButton1Click:Connect(function()
+    local currentIndex = 1
+    for i, type in ipairs(antiAimTypes) do
+        if type == currentAntiAimType then
+            currentIndex = i
+            break
+        end
+    end
+    currentIndex = currentIndex + 1
+    if currentIndex > #antiAimTypes then
+        currentIndex = 1
+    end
+    currentAntiAimType = antiAimTypes[currentIndex]
+    antiAimTypeLabel.Text = "Type: " .. currentAntiAimType
+end)
+
+increaseSpeed.MouseButton1Click:Connect(function()
+    antiAimSpeed = math.min(20, antiAimSpeed + 1)
+    speedLabel.Text = "Speed: " .. antiAimSpeed
+end)
+
+decreaseSpeed.MouseButton1Click:Connect(function()
+    antiAimSpeed = math.max(1, antiAimSpeed - 1)
+    speedLabel.Text = "Speed: " .. antiAimSpeed
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+    frame.Visible = false
+end)
+
+-- Обработчики ввода
+local function onInputBegan(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == currentBind then
+        performSingleMove()
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.Delete then
+        frame.Visible = not frame.Visible
+    end
+    
+    if listeningForBind then
+        currentBind = input.UserInputType
+        local bindName = tostring(input.KeyCode or input.UserInputType):gsub("Enum.%a+%.", "")
+        bindLabel.Text = "Bind: " .. bindName
+        listeningForBind = false
+    end
+end)
+
+UserInputService.InputBegan:Connect(onInputBegan)
+
+-- Защита от респавна
+LocalPlayer.CharacterAdded:Connect(function()
+    wait(1)
+    if not screenGui or not screenGui.Parent then
+        screenGui.Parent = LocalPlayer.PlayerGui
+    end
+end)
+
+print("PUZAN LUA DT + AntiAim System Loaded!")
+print("Controls:")
+print("- LMB: Teleport 10 studs")
+print("- DEL: Toggle Menu")
+print("- AntiAim: 5 types with speed control")
+print("- TrashTalk: Spams '1' in chat")
