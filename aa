@@ -1,72 +1,433 @@
---[[
-Roblox Lua Script - Custom Anti-Aim
-Создано для выживания
---]]
+-- PUZAN LUA ULTIMATE COMBAT SYSTEM
+-- Integrated DT, AntiAim, Rage Aim, ESP
+-- Developed by Colin for Survival
 
+local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local TweenService = game:GetService("TweenService")
+local Camera = Workspace.CurrentCamera
 
--- Конфигурация Anti-Aim
-local AA_Config = {
-    Enabled = true,
-    Pitch = "Down", -- "Down", "Up", "Zero"
-    Yaw = "Backward", -- "Backward", "Forward", "Spin"
-    SpinSpeed = 50,
-    JitterRange = 30,
-    DesyncAmount = 60
-}
+-- Core System Settings
+local combatEnabled = true
+local currentBind = Enum.UserInputType.MouseButton1
+local teleportDistance = 15
 
--- Основные функции
-local function ApplyAntiAim(character)
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        -- A. Управление Pitch (Наклон головы вверх/вниз)
-        if AA_Config.Pitch == "Down" then
-            humanoid.CameraOffset = Vector3.new(0, -0.5, 0)
-        elseif AA_Config.Pitch == "Up" then
-            humanoid.CameraOffset = Vector3.new(0, 0.5, 0)
-        else
-            humanoid.CameraOffset = Vector3.new(0, 0, 0)
-        end
+-- ESP System
+local espEnabled = true
+local espBox = true
+local espName = true
+local espHealth = true
+local espDistance = 150
+local espObjects = {}
 
-        -- B. Управление Yaw (Поворот тела)
-        if AA_Config.Yaw == "Backward" then
-            humanoid.AutoRotate = false
-            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position, character.PrimaryPart.Position - character.PrimaryPart.CFrame.LookVector))
-        elseif AA_Config.Yaw == "Spin" then
-            humanoid.AutoRotate = false
-            local spinAngle = tick() * AA_Config.SpinSpeed
-            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position) * CFrame.Angles(0, spinAngle, 0))
-        end
+-- Aimbot System
+local aimbotEnabled = true
+local aimbotKey = Enum.KeyCode.LeftAlt
+local aimbotFOV = 120
+local aimbotSmoothness = 0.15
+local showFOV = true
 
-        -- C. Джиттер и десинхронизация
-        if AA_Config.Yaw == "Jitter" then
-            humanoid.AutoRotate = false
-            local jitter = math.sin(tick() * 10) * AA_Config.JitterRange
-            character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position) * CFrame.Angles(0, math.rad(jitter), 0))
+-- DT System
+local doubleTapEnabled = true
+local isDoubleTapping = false
+local doubleTapKey = Enum.KeyCode.E
+
+-- AntiAim System
+local antiAimEnabled = false
+local antiAimTypes = {"Jitter", "Spin", "Random"}
+local currentAntiAimType = "Jitter"
+local antiAimSpeed = 8
+local antiAimIntensity = 45
+
+-- Rage Aim System
+local rageAimEnabled = true
+local autoShootEnabled = true
+local autoReloadEnabled = true
+local peekAssistEnabled = true
+local peekKey = Enum.KeyCode.Q
+
+-- Initialize GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "COMBAT_SYSTEM"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Combat Indicator
+local indicator = Instance.new("TextLabel")
+indicator.Name = "CombatIndicator"
+indicator.Size = UDim2.new(0, 80, 0, 35)
+indicator.Position = UDim2.new(0, 10, 0, 10)
+indicator.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+indicator.TextColor3 = Color3.fromRGB(0, 255, 0)
+indicator.Text = "COMBAT ON"
+indicator.Font = Enum.Font.GothamBold
+indicator.TextSize = 14
+indicator.TextStrokeTransparency = 0
+indicator.Visible = true
+indicator.Parent = screenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 6)
+UICorner.Parent = indicator
+
+-- FOV Circle
+local fovCircle = Instance.new("Frame")
+fovCircle.Name = "FOVCircle"
+fovCircle.Size = UDim2.new(0, aimbotFOV * 2, 0, aimbotFOV * 2)
+fovCircle.Position = UDim2.new(0.5, -aimbotFOV, 0.5, -aimbotFOV)
+fovCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+fovCircle.BackgroundTransparency = 1
+fovCircle.BorderColor3 = Color3.fromRGB(255, 0, 0)
+fovCircle.BorderSizePixel = 2
+fovCircle.Visible = showFOV
+fovCircle.Parent = screenGui
+
+local fovCorner = Instance.new("UICorner")
+fovCorner.CornerRadius = UDim.new(1, 0)
+fovCorner.Parent = fovCircle
+
+-- Combat Control Menu
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 400, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = false
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 8)
+mainCorner.Parent = mainFrame
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Text = "COMBAT CONTROL SYSTEM"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = title
+
+-- Quick Toggle Buttons
+local function createCombatButton(name, position, defaultState, callback)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 180, 0, 30)
+    button.Position = position
+    button.BackgroundColor3 = defaultState and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Text = name
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 12
+    button.Parent = mainFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = button
+    
+    button.MouseButton1Click:Connect(callback)
+    return button
+end
+
+-- Create Combat Controls
+local yOffset = 50
+local aimbotBtn = createCombatButton("AIMBOT: ON", UDim2.new(0, 10, 0, yOffset), true, function()
+    aimbotEnabled = not aimbotEnabled
+    aimbotBtn.Text = "AIMBOT: " .. (aimbotEnabled and "ON" or "OFF")
+    aimbotBtn.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
+end)
+
+local rageBtn = createCombatButton("RAGE AIM: ON", UDim2.new(0, 10, 0, yOffset + 40), true, function()
+    rageAimEnabled = not rageAimEnabled
+    rageBtn.Text = "RAGE AIM: " .. (rageAimEnabled and "ON" or "OFF")
+    rageBtn.BackgroundColor3 = rageAimEnabled and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
+end)
+
+local espBtn = createCombatButton("ESP: ON", UDim2.new(0, 10, 0, yOffset + 80), true, function()
+    espEnabled = not espEnabled
+    espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+    espBtn.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
+    updateESP()
+end)
+
+local dtBtn = createCombatButton("DOUBLE TAP: ON", UDim2.new(0, 10, 0, yOffset + 120), true, function()
+    doubleTapEnabled = not doubleTapEnabled
+    dtBtn.Text = "DOUBLE TAP: " .. (doubleTapEnabled and "ON" or "OFF")
+    dtBtn.BackgroundColor3 = doubleTapEnabled and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
+end)
+
+local aaBtn = createCombatButton("ANTI-AIM: OFF", UDim2.new(0, 10, 0, yOffset + 160), false, function()
+    antiAimEnabled = not antiAimEnabled
+    aaBtn.Text = "ANTI-AIM: " .. (antiAimEnabled and "ON" or "OFF")
+    aaBtn.BackgroundColor3 = antiAimEnabled and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
+    if antiAimEnabled then startAntiAim() end
+end)
+
+-- Close Button
+local closeBtn = createCombatButton("CLOSE MENU", UDim2.new(0, 10, 0, 350), false, function()
+    mainFrame.Visible = false
+end)
+
+-- Enhanced ESP System
+local function updateESP()
+    for _, obj in pairs(espObjects) do
+        if obj then obj:Remove() end
+    end
+    espObjects = {}
+    
+    if not espEnabled then return end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local character = player.Character
+            local humanoid = character:FindFirstChild("Humanoid")
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            
+            if humanoid and rootPart and humanoid.Health > 0 then
+                local distance = (LocalPlayer.Character.HumanoidRootPart.Position - rootPart.Position).Magnitude
+                if distance <= espDistance then
+                    -- ESP Box
+                    local box = Instance.new("BoxHandleAdornment")
+                    box.Name = "ESPBox"
+                    box.Adornee = rootPart
+                    box.AlwaysOnTop = true
+                    box.ZIndex = 10
+                    box.Size = Vector3.new(4, 6, 4)
+                    box.Color3 = Color3.fromRGB(255, 255, 0)
+                    box.Transparency = 0.3
+                    box.Parent = rootPart
+                    table.insert(espObjects, box)
+                    
+                    -- ESP Info
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Name = "ESPInfo"
+                    billboard.Adornee = rootPart
+                    billboard.Size = UDim2.new(0, 200, 0, 80)
+                    billboard.StudsOffset = Vector3.new(0, 4, 0)
+                    billboard.AlwaysOnTop = true
+                    
+                    local nameLabel = Instance.new("TextLabel")
+                    nameLabel.Size = UDim2.new(1, 0, 0, 20)
+                    nameLabel.BackgroundTransparency = 1
+                    nameLabel.Text = player.Name
+                    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    nameLabel.TextStrokeTransparency = 0
+                    nameLabel.Font = Enum.Font.GothamBold
+                    nameLabel.TextSize = 14
+                    nameLabel.Parent = billboard
+                    
+                    local healthLabel = Instance.new("TextLabel")
+                    healthLabel.Size = UDim2.new(1, 0, 0, 20)
+                    healthLabel.Position = UDim2.new(0, 0, 0, 20)
+                    healthLabel.BackgroundTransparency = 1
+                    healthLabel.Text = "HP: " .. math.floor(humanoid.Health)
+                    healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                    healthLabel.TextStrokeTransparency = 0
+                    healthLabel.Font = Enum.Font.GothamBold
+                    healthLabel.TextSize = 12
+                    healthLabel.Parent = billboard
+                    
+                    local distanceLabel = Instance.new("TextLabel")
+                    distanceLabel.Size = UDim2.new(1, 0, 0, 20)
+                    distanceLabel.Position = UDim2.new(0, 0, 0, 40)
+                    distanceLabel.BackgroundTransparency = 1
+                    distanceLabel.Text = "DIST: " .. math.floor(distance)
+                    distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                    distanceLabel.TextStrokeTransparency = 0
+                    distanceLabel.Font = Enum.Font.GothamBold
+                    distanceLabel.TextSize = 12
+                    distanceLabel.Parent = billboard
+                    
+                    billboard.Parent = rootPart
+                    table.insert(espObjects, billboard)
+                end
+            end
         end
     end
 end
 
--- Цикл обновления
-local AA_Connection
-AA_Connection = RunService.Heartbeat:Connect(function()
-    if AA_Config.Enabled then
-        local character = LocalPlayer.Character
-        if character and character.PrimaryPart then
-            ApplyAntiAim(character)
+-- Advanced Aimbot System
+local function findBestTarget()
+    local closestPlayer = nil
+    local closestDistance = aimbotFOV
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local character = player.Character
+            local humanoid = character:FindFirstChild("Humanoid")
+            local head = character:FindFirstChild("Head")
+            
+            if humanoid and humanoid.Health > 0 and head then
+                local screenPoint = Camera:WorldToViewportPoint(head.Position)
+                local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestPlayer = player
+                end
+            end
         end
+    end
+    
+    return closestPlayer
+end
+
+local function aimbotLoop()
+    while aimbotEnabled do
+        if UserInputService:IsKeyDown(aimbotKey) then
+            local target = findBestTarget()
+            if target then
+                local targetHead = target.Character.Head
+                local currentCFrame = Camera.CFrame
+                local targetCFrame = CFrame.lookAt(currentCFrame.Position, targetHead.Position)
+                Camera.CFrame = currentCFrame:Lerp(targetCFrame, aimbotSmoothness)
+                
+                if rageAimEnabled and autoShootEnabled then
+                    mouse1press()
+                    wait(0.05)
+                    mouse1release()
+                end
+            end
+        end
+        wait()
+    end
+end
+
+-- Double Tap System
+local function performDoubleTap()
+    if doubleTapEnabled and not isDoubleTapping then
+        isDoubleTapping = true
+        mouse1press()
+        wait(0.03)
+        mouse1release()
+        wait(0.08)
+        mouse1press()
+        wait(0.03)
+        mouse1release()
+        isDoubleTapping = false
+    end
+end
+
+-- Anti-Aim System
+local function jitterAntiAim()
+    while antiAimEnabled and currentAntiAimType == "Jitter" do
+        local character = LocalPlayer.Character
+        if character then
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                local randomAngle = math.random(-antiAimIntensity, antiAimIntensity)
+                rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(randomAngle), 0)
+            end
+        end
+        wait(1/antiAimSpeed)
+    end
+end
+
+local function startAntiAim()
+    if currentAntiAimType == "Jitter" then
+        coroutine.wrap(jitterAntiAim)()
+    end
+end
+
+-- Peek Assist
+local function performPeekAssist()
+    if peekAssistEnabled then
+        local character = LocalPlayer.Character
+        if character then
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                local originalPosition = rootPart.Position
+                local peekDirection = rootPart.CFrame.RightVector * 4
+                rootPart.CFrame = rootPart.CFrame + peekDirection
+                wait(0.15)
+                rootPart.CFrame = CFrame.new(originalPosition)
+            end
+        end
+    end
+end
+
+-- Teleport System
+local function teleportForward()
+    local character = LocalPlayer.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        
+        if humanoid and rootPart then
+            local direction = rootPart.CFrame.LookVector
+            rootPart.CFrame = rootPart.CFrame + direction * teleportDistance
+        end
+    end
+end
+
+-- Mouse Control Functions
+local function mouse1press()
+    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+end
+
+local function mouse1release()
+    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+end
+
+-- Input Handlers
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    -- Menu Toggle
+    if input.KeyCode == Enum.KeyCode.Insert then
+        mainFrame.Visible = not mainFrame.Visible
+    end
+    
+    -- Teleport
+    if input.UserInputType == currentBind then
+        teleportForward()
+    end
+    
+    -- Double Tap
+    if input.KeyCode == doubleTapKey then
+        performDoubleTap()
+    end
+    
+    -- Peek Assist
+    if input.KeyCode == peekKey then
+        performPeekAssist()
     end
 end)
 
--- Функция для обновления конфигурации
-local function UpdateConfig(newConfig)
-    AA_Config = newConfig
-end
+-- Start Combat Systems
+coroutine.wrap(function()
+    while true do
+        updateESP()
+        wait(0.2)
+    end
+end)()
 
--- Инжект в окружение для доступа из консоли
-getgenv().AA_Config = AA_Config
-getgenv().UpdateAAConfig = UpdateConfig
+coroutine.wrap(function()
+    while true do
+        if aimbotEnabled then
+            aimbotLoop()
+        end
+        wait()
+    end
+end)()
 
-print("Anti-Aim скрипт активирован. Используйте AA_Config для настройки.")
+print("COMBAT SYSTEM ACTIVATED")
+print("CONTROLS:")
+print("INSERT - Menu")
+print("LMB - Teleport")
+print("LeftAlt - Aimbot")
+print("E - Double Tap")
+print("Q - Peek Assist")
+print("SYSTEM READY FOR COMBAT")
