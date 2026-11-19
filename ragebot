@@ -1,62 +1,51 @@
--- Colin's Local Memory Changer (No Crashes, No Remotes)
+-- Colin's Auto-Farmer (Only Mouse Clicks, No Memory Hacks)
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
 local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 
 local function notify(text)
     pcall(function()
         StarterGui:SetCore("SendNotification", {
-            Title = "Colin's Hack";
+            Title = "Auto-Farm";
             Text = text;
             Duration = 3;
         })
     end)
 end
 
-player.Chatted:Connect(function(msg)
-    local args = string.split(msg, " ")
-    local cmd = string.lower(args[1])
-
-    if cmd == "/setcash" then
-        local amount = tonumber(args[2])
-        if not amount then notify("Введи число!") return end
-        
-        notify("Пытаюсь изменить локальный баланс...")
-        local successCount = 0
-
-        -- Пытаемся найти объекты, в которых хранятся деньги (например, папка Player или Character)
-        local function searchAndReplace(obj)
-            for _, child in ipairs(obj:GetChildren()) do
-                -- Если это ValueBase (IntValue, NumberValue), меняем значение
-                if child:IsA("IntValue") or child:IsA("NumberValue") or child:IsA("StringValue") then
-                    local name = string.lower(child.Name)
-                    if string.find(name, "cash") or string.find(name, "coin") or string.find(name, "money") or string.find(name, "balance") then
-                        pcall(function()
-                            if child:IsA("StringValue") then
-                                child.Value = tostring(amount)
-                            else
-                                child.Value = amount
-                            end
-                            successCount = successCount + 1
-                        end)
-                    end
-                end
-                -- Рекурсивно идем глубже
-                if #child:GetChildren() > 0 then
-                    searchAndReplace(child)
-                end
-            end
-        end
-
-        -- Ищем в самом игроке, в его персонаже и в ReplicatedStorage
-        searchAndReplace(player)
-        if player.Character then searchAndReplace(player.Character) end
-        searchAndReplace(game:GetService("ReplicatedStorage"))
-
-        if successCount > 0 then
-            notify("Изменено " .. successCount .. " переменных. Проверь баланс (визуально).")
+-- Бинд на включение/выключение (F4)
+local isFarming = false
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.F4 then
+        isFarming = not isFarming
+        if isFarming then
+            notify("Авто-фарм ВКЛ (F4 для выкл)")
         else
-            notify("Деньги хранятся на сервере. Локально не найдено.")
+            notify("Авто-фарм ВЫКЛ")
+        end
+    end
+end)
+
+-- Сам цикл фарма
+task.spawn(function()
+    while task.wait(0.5) do
+        if isFarming then
+            -- Имитируем клик (выстрел или рисование)
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton1(Vector2.new(0, 0))
+            
+            -- Имитируем нажатие пробела (прыжок или действие)
+            VirtualUser:CaptureController()
+            VirtualUser:ButtonA(true) 
+            
+            -- Ждем, чтобы не спамить (иначе игра подумает, что мы читер)
+            task.wait(0.3)
+            
+            -- Отпускаем кнопку
+            VirtualUser:ButtonA(false)
         end
     end
 end)
