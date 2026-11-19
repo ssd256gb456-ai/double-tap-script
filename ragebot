@@ -1,5 +1,6 @@
--- Colin's Silent Remote Spoofer & Catcher
+-- Colin's Draggable & Hideable Silent Remote Spoofer
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -10,84 +11,166 @@ gui.Name = "ColinSilentHack"
 gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
+-- Основной фрейм
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 320, 0, 240)
-frame.Position = UDim2.new(0.5, -160, 0.5, -120)
+frame.Size = UDim2.new(0, 320, 0, 260)
+frame.Position = UDim2.new(0.5, -160, 0.5, -130)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
+frame.Active = true
 frame.Parent = gui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
+-- Верхняя панель для перетаскивания и скрытия
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 30)
+topBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+topBar.BorderSizePixel = 0
+topBar.Parent = frame
+Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 8)
+
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
+title.Size = UDim2.new(1, -60, 1, 0)
+title.Position = UDim2.new(0, 10, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "Тихий перехватчик (Colin)"
 title.TextColor3 = Color3.fromRGB(255, 200, 0)
 title.Font = Enum.Font.GothamBold
-title.TextSize = 16
-title.Parent = frame
+title.TextSize = 14
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = topBar
 
+-- Кнопка Скрыть/Показать
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 25, 0, 25)
+toggleBtn.Position = UDim2.new(1, -30, 0, 2)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Text = "-"
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 16
+toggleBtn.Parent = topBar
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 4)
+
+-- Контейнер для контента (чтобы скрывать всё сразу)
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, 0, 1, -30)
+content.Position = UDim2.new(0, 0, 0, 30)
+content.BackgroundTransparency = 1
+content.Parent = frame
+
+-- Статус
 local status = Instance.new("TextLabel")
 status.Size = UDim2.new(1, -20, 0, 40)
-status.Position = UDim2.new(0, 10, 0, 35)
+status.Position = UDim2.new(0, 10, 0, 5)
 status.BackgroundTransparency = 1
 status.TextColor3 = Color3.fromRGB(180, 180, 180)
-status.Text = "Статус: Жду действия в игре (убей NPC, продай предмет)..."
+status.Text = "Жду действия в игре (убей NPC, продай предмет)..."
 status.Font = Enum.Font.Gotham
 status.TextSize = 13
 status.TextWrapped = true
-status.Parent = frame
+status.Parent = content
 
 -- Поле суммы
 local inputAmount = Instance.new("TextBox")
 inputAmount.Size = UDim2.new(1, -20, 0, 36)
-inputAmount.Position = UDim2.new(0, 10, 0, 80)
+inputAmount.Position = UDim2.new(0, 10, 0, 50)
 inputAmount.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 inputAmount.TextColor3 = Color3.fromRGB(255, 255, 255)
 inputAmount.PlaceholderText = "Желаемая сумма"
 inputAmount.Text = "100000"
-inputAmount.Parent = frame
+inputAmount.Parent = content
 Instance.new("UICorner", inputAmount).CornerRadius = UDim.new(0, 6)
 
--- Кнопка спама (только если перехватили)
+-- Кнопка отправки
 local button = Instance.new("TextButton")
 button.Size = UDim2.new(1, -20, 0, 44)
-button.Position = UDim2.new(0, 10, 0, 125)
-button.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Изначально неактивна
+button.Position = UDim2.new(0, 10, 0, 95)
+button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 button.TextColor3 = Color3.fromRGB(150, 150, 150)
 button.Text = "Ожидание перехвата..."
 button.Font = Enum.Font.GothamBold
 button.TextSize = 15
-button.Parent = frame
+button.Parent = content
 Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
 
+-- Лог
 local logOutput = Instance.new("TextLabel")
 logOutput.Size = UDim2.new(1, -20, 0, 40)
-logOutput.Position = UDim2.new(0, 10, 0, 180)
+logOutput.Position = UDim2.new(0, 10, 0, 145)
 logOutput.BackgroundTransparency = 1
 logOutput.TextColor3 = Color3.fromRGB(255, 100, 100)
-logOutput.Text = "Нажми на кнопку после того, как статус изменится."
+logOutput.Text = "Нажми на кнопку после перехвата."
 logOutput.Font = Enum.Font.Code
 logOutput.TextSize = 12
 logOutput.TextWrapped = true
-logOutput.Parent = frame
+logOutput.Parent = content
 
--- 2. Настройка перехватчика (Hook)
+-- 2. Логика скрытия/разворачивания
+local isOpen = true
+toggleBtn.MouseButton1Click:Connect(function()
+    isOpen = not isOpen
+    if isOpen then
+        frame:TweenSize(UDim2.new(0, 320, 0, 260), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        content.Visible = true
+        toggleBtn.Text = "-"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    else
+        frame:TweenSize(UDim2.new(0, 320, 0, 30), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        content.Visible = false
+        toggleBtn.Text = "+"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    end
+end)
+
+-- 3. Логика перетаскивания (Drag)
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+topBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+topBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- 4. Настройка перехватчика (Hook)
 local capturedRemote = nil
 local capturedArgs = nil
 
 if hookfunction then
     local oldFire = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
         local args = {...}
-        -- Если мы уже нашли ремоут, не перехватываем дальше
         if not capturedRemote then
-            -- Пытаемся найти что-то похожее на награду (число в аргументах)
             for _, arg in ipairs(args) do
                 if type(arg) == "number" then
                     capturedRemote = self
                     capturedArgs = args
                     
-                    -- Обновляем UI
                     status.Text = "Перехвачено: " .. self.Name
                     button.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
                     button.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -100,13 +183,13 @@ if hookfunction then
         return oldFire(self, ...)
     end)
 else
-    status.Text = "Ошибка: твой executor не поддерживает hookfunction."
+    status.Text = "Ошибка: нет hookfunction."
 end
 
--- 3. Логика отправки
+-- 5. Логика отправки
 button.MouseButton1Click:Connect(function()
     if not capturedRemote then
-        status.Text = "Сначала сделай действие в игре, чтобы я перехватил вызов!"
+        status.Text = "Сначала сделай действие в игре!"
         return
     end
 
@@ -116,27 +199,24 @@ button.MouseButton1Click:Connect(function()
         return
     end
 
-    -- Меняем аргументы: если перехватили число, подменяем его на наше
     local newArgs = {}
     for i, arg in ipairs(capturedArgs) do
         if type(arg) == "number" then
-            newArgs[i] = amount -- Подменяем число
+            newArgs[i] = amount
         else
-            newArgs[i] = arg -- Остальное оставляем как есть
+            newArgs[i] = arg
         end
     end
 
-    -- Отправляем ОДИН раз, без циклов, чтобы античит не спалил
     pcall(function()
         capturedRemote:FireServer(unpack(newArgs))
     end)
     
-    status.Text = "Отправлено! Жди, не спамь, иначе выкинет."
+    status.Text = "Отправлено! Жди, не спамь."
     button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     button.TextColor3 = Color3.fromRGB(150, 150, 150)
     button.Text = "Ожидание нового действия..."
     
-    -- Сбрасываем перехват, чтобы найти следующий вызов
     capturedRemote = nil
     capturedArgs = nil
 end)
