@@ -1,47 +1,40 @@
--- Colin's Clean & Safe Single-Shot Script
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
+-- Colin's RP Money Farmer (Safe VirtualUser Version)
+local Players = game:GetService("Players")
+local VirtualUser = game:GetService("VirtualUser")
+local StarterGui = game:GetService("StarterGui")
+local player = Players.LocalPlayer
 
--- НАСТРОЙКИ
-local REMOTE_NAME = "AddCash" -- ВПИШИ СЮДА ТОЧНОЕ ИМЯ РЕМОУТА
-local CASH_AMOUNT = 999999
-local KEYBIND = Enum.KeyCode.F5 -- Клавиша активации
+-- Настройки
+local DELAY = 2 -- Задержка между действиями (в секундах)
+local USE_KEY_E = true -- Если на работе нужно нажимать E, оставь true. Если кликать мышкой - false.
 
--- Слушаем нажатие клавиши
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == KEYBIND then
-        
-        -- Ищем ремоут ОДИН раз, без циклов
-        local remote = ReplicatedStorage:FindFirstChild(REMOTE_NAME, true)
-        
-        if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
-            -- Отправляем РОВНО ОДИН запрос
-            pcall(function()
-                if remote:IsA("RemoteEvent") then
-                    remote:FireServer(CASH_AMOUNT)
-                elseif remote:IsA("RemoteFunction") then
-                    remote:InvokeServer(CASH_AMOUNT)
-                end
-            end)
-            
-            -- Уведомление (нативное, без GUI)
-            pcall(function()
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "Colin",
-                    Text = "Запрос отправлен в " .. REMOTE_NAME,
-                    Duration = 2
-                })
-            end)
-        else
-            -- Если ремоут не найден, сообщаем
-            pcall(function()
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "Colin Ошибка",
-                    Text = "Ремоут не найден. Проверь имя.",
-                    Duration = 3
-                })
-            end)
-        end
+local function notify(text)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "AutoFarm";
+            Text = text;
+            Duration = 3
+        })
+    end)
+end
+
+notify("Автофарм денег запущен. Встань на рабочую точку!")
+
+-- Запускаем цикл
+task.spawn(function()
+    while task.wait(DELAY) do
+        pcall(function()
+            if USE_KEY_E then
+                -- Имитация нажатия клавиши E (взаимодействие)
+                VirtualUser:CaptureController()
+                VirtualUser:ButtonE(true)
+                task.wait(0.1)
+                VirtualUser:ButtonE(false)
+            else
+                -- Имитация клика мышью
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton1(Vector2.new(0, 0))
+            end
+        end)
     end
 end)
