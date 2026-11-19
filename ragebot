@@ -1,4 +1,4 @@
--- Colin's ESP & Aimbot for Xeno (Safe GUI)
+-- Colin's Fixed Hideable Menu for Xeno
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -6,13 +6,11 @@ local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local StarterGui = game:GetService("StarterGui")
 
--- Защита от краша
 if not Drawing then
     StarterGui:SetCore("SendNotification", {Title="Colin", Text="Xeno не поддерживает Drawing.", Duration=5})
     return
 end
 
--- Глобальные настройки
 getgenv().ColinSettings = {
     ESP_ENABLED = true,
     AIMBOT_ENABLED = false,
@@ -28,8 +26,8 @@ gui.ResetOnSpawn = false
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 200, 0, 120)
-mainFrame.Position = UDim2.new(0.5, -100, 0.5, -60)
+mainFrame.Size = UDim2.new(0, 200, 0, 150)
+mainFrame.Position = UDim2.new(0.5, -100, 0.5, -75)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
@@ -45,7 +43,7 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 title.Parent = mainFrame
 
--- Кнопка скрытия
+-- Кнопка скрытия (крестик)
 local hideBtn = Instance.new("TextButton")
 hideBtn.Size = UDim2.new(0, 25, 0, 25)
 hideBtn.Position = UDim2.new(1, -30, 0, 2)
@@ -87,7 +85,19 @@ aimBtn.TextSize = 13
 aimBtn.Parent = content
 Instance.new("UICorner", aimBtn).CornerRadius = UDim.new(0, 6)
 
--- Скрытие меню
+-- Кнопка "Скрыть все"
+local closeAllBtn = Instance.new("TextButton")
+closeAllBtn.Size = UDim2.new(1, -20, 0, 30)
+closeAllBtn.Position = UDim2.new(0, 10, 0, 80)
+closeAllBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
+closeAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeAllBtn.Text = "Скрыть всё меню"
+closeAllBtn.Font = Enum.Font.GothamBold
+closeAllBtn.TextSize = 13
+closeAllBtn.Parent = content
+Instance.new("UICorner", closeAllBtn).CornerRadius = UDim.new(0, 6)
+
+-- Логика скрытия
 local isOpen = true
 local function toggleMenu()
     isOpen = not isOpen
@@ -97,6 +107,10 @@ local function toggleMenu()
 end
 
 hideBtn.MouseButton1Click:Connect(toggleMenu)
+
+closeAllBtn.MouseButton1Click:Connect(function()
+    gui.Enabled = not gui.Enabled
+end)
 
 -- Обработка кнопок
 espBtn.MouseButton1Click:Connect(function()
@@ -111,15 +125,14 @@ aimBtn.MouseButton1Click:Connect(function()
     aimBtn.BackgroundColor3 = getgenv().ColinSettings.AIMBOT_ENABLED and Color3.fromRGB(40, 150, 40) or Color3.fromRGB(150, 40, 40)
 end)
 
--- Бинд RightShift
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.RightShift then
+-- Бинд на RightShift (через Mouse.KeyDown, который Xeno ловит лучше)
+LocalPlayer:GetMouse().KeyDown:Connect(function(key)
+    if key == "rshift" then
         toggleMenu()
     end
 end)
 
--- Логика ESP (Drawing)
+-- ESP (Drawing)
 local ESP_Objects = {}
 
 local function createESP(player)
@@ -146,7 +159,6 @@ Players.PlayerRemoving:Connect(function(p)
     end
 end)
 
--- Рисуем ESP
 RunService.RenderStepped:Connect(function()
     for player, esp in pairs(ESP_Objects) do
         if getgenv().ColinSettings.ESP_ENABLED and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -177,7 +189,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Логика Aimbot
+-- Aimbot
 RunService.RenderStepped:Connect(function()
     if not getgenv().ColinSettings.AIMBOT_ENABLED then return end
     local closest = nil
