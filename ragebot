@@ -1,10 +1,11 @@
--- Colin's Restored ESP & Aimbot with Keybind & Better Boxes
+-- Colin's Ultimate Aim (Visual + Silent, No Crashes)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local StarterGui = game:GetService("StarterGui")
+local Mouse = LocalPlayer:GetMouse()
 
 if not Drawing then
     StarterGui:SetCore("SendNotification", {Title="Colin", Text="Xeno не поддерживает Drawing.", Duration=5})
@@ -13,7 +14,8 @@ end
 
 getgenv().ColinSettings = {
     ESP_ENABLED = true,
-    AIMBOT_ENABLED = true,
+    AIMBOT_ENABLED = false,
+    SILENT_AIM = false,
     AIM_FOV = 120,
     AIM_SMOOTH = 0.15,
     SHOW_HEALTH = true,
@@ -21,14 +23,15 @@ getgenv().ColinSettings = {
     MENU_KEY = Enum.KeyCode.RightShift
 }
 
+-- GUI
 local gui = Instance.new("ScreenGui")
 gui.Name = "ColinSkeetUI"
 gui.ResetOnSpawn = false
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 400, 0, 270)
-mainFrame.Position = UDim2.new(0.5, -200, 0.5, -135)
+mainFrame.Size = UDim2.new(0, 400, 0, 300)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 1
 mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
@@ -56,7 +59,7 @@ titleBar.Parent = content
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 1, 0)
 title.BackgroundTransparency = 1
-title.Text = "Visuals"
+title.Text = "Aimbot"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
@@ -73,7 +76,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.Parent = titleBar
 
 local pages = {}
-local currentPage = "Visuals"
+local currentPage = "Aimbot"
 local function createPage(name)
     local page = Instance.new("Frame")
     page.Size = UDim2.new(1, 0, 1, -30)
@@ -87,6 +90,7 @@ createPage("Visuals")
 createPage("Aimbot")
 createPage("Settings")
 
+-- UI Helpers
 local function createCheckbox(parent, text, posY, defaultState, settingName)
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, -20, 0, 20)
@@ -170,17 +174,18 @@ createCheckbox(pages["Visuals"], "ESP Box", 10, true, "ESP_ENABLED")
 createCheckbox(pages["Visuals"], "Show Health Bar", 40, true, "SHOW_HEALTH")
 createCheckbox(pages["Visuals"], "Show Names", 70, true, "SHOW_NAMES")
 
-createCheckbox(pages["Aimbot"], "Aimbot Enable", 10, true, "AIMBOT_ENABLED")
-createSlider(pages["Aimbot"], "FOV", 40, 10, 360, 120, "AIM_FOV", false)
-createSlider(pages["Aimbot"], "Smooth", 70, 0.01, 1, 0.15, "AIM_SMOOTH", true)
+createCheckbox(pages["Aimbot"], "Silent Aim (Fake)", 10, false, "SILENT_AIM")
+createCheckbox(pages["Aimbot"], "Visual Aim (Mouse)", 40, false, "AIMBOT_ENABLED")
+createSlider(pages["Aimbot"], "FOV", 70, 10, 360, 120, "AIM_FOV", false)
+createSlider(pages["Aimbot"], "Smooth", 100, 0.01, 1, 0.15, "AIM_SMOOTH", true)
 
--- Кнопка смены бинда
+-- Настройки бинда
 local bindBtn = Instance.new("TextButton")
 bindBtn.Size = UDim2.new(1, -20, 0, 30)
 bindBtn.Position = UDim2.new(0, 10, 0, 10)
 bindBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 bindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-bindBtn.Text = "Сменить бинд (RightShift)"
+bindBtn.Text = "Бинд: RightShift"
 bindBtn.Font = Enum.Font.Gotham
 bindBtn.TextSize = 13
 bindBtn.Parent = pages["Settings"]
@@ -189,15 +194,14 @@ Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 6)
 local keys = {Enum.KeyCode.RightShift, Enum.KeyCode.RightControl, Enum.KeyCode.Insert}
 local keyNames = {"RightShift", "RightControl", "Insert"}
 local keyIndex = 1
-
 bindBtn.MouseButton1Click:Connect(function()
     keyIndex = keyIndex + 1
     if keyIndex > #keys then keyIndex = 1 end
     getgenv().ColinSettings.MENU_KEY = keys[keyIndex]
-    bindBtn.Text = "Сменить бинд (" .. keyNames[keyIndex] .. ")"
+    bindBtn.Text = "Бинд: " .. keyNames[keyIndex]
 end)
 
--- Логика табов
+-- Вкладки
 local tabButtons = {}
 local tabs = {"Visuals", "Aimbot", "Settings"}
 for i, tab in ipairs(tabs) do
@@ -220,6 +224,7 @@ for i, tab in ipairs(tabs) do
     table.insert(tabButtons, btn)
 end
 
+-- Ватермарка
 local watermark = Instance.new("TextLabel")
 watermark.Size = UDim2.new(0, 100, 0, 20)
 watermark.Position = UDim2.new(0, 10, 1, -30)
@@ -244,6 +249,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
+-- ESP
 local ESP_Objects = {}
 local function createESP(player)
     if player == LocalPlayer then return end
@@ -284,7 +290,6 @@ RunService.RenderStepped:Connect(function()
             local rootScreen, _ = Camera:WorldToViewportPoint(root.Position)
             
             if onScreen then
-                -- Увеличенный и ровный бокс
                 local height = math.abs(headScreen.Y - rootScreen.Y) * 2.2
                 local width = height / 1.8
                 
@@ -324,7 +329,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Аимбот
+-- Visual Aimbot
 RunService.RenderStepped:Connect(function()
     if not getgenv().ColinSettings.AIMBOT_ENABLED then return end
     local closest = nil
@@ -353,3 +358,18 @@ RunService.RenderStepped:Connect(function()
         mousemoverel(delta.X, delta.Y)
     end
 end)
+
+-- Silent Aim (Осторожно, может крашнуть на некоторых инжекторах)
+if getgenv().ColinSettings.SILENT_AIM and hookmetamethod then
+    local oldIndex
+    oldIndex = hookmetamethod(game, "__index", function(self, key)
+        if self == Mouse and (key == "Hit" or key == "Target") and getgenv().ColinSettings.SILENT_AIM then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChildOfClass("Humanoid") and player.Character.Humanoid.Health > 0 then
+                    return (key == "Hit" and player.Character.Head.CFrame or player.Character.Head)
+                end
+            end
+        end
+        return oldIndex(self, key)
+    end)
+end
