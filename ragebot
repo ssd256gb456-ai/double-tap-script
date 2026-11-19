@@ -1,4 +1,4 @@
--- Colin's Skeet-Style UI (ESP & Aimbot)
+-- Colin's Visual Aimbot & Recoil Control (Skeet UI)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -16,7 +16,9 @@ getgenv().ColinSettings = {
     AIMBOT_ENABLED = false,
     AIM_FOV = 120,
     AIM_SMOOTH = 0.15,
-    TEAM_CHECK = true
+    TEAM_CHECK = true,
+    RECOIL_CONTROL = true,
+    VISUAL_CHECK = true
 }
 
 -- Основной экран
@@ -34,7 +36,6 @@ mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
 mainFrame.Active = true
 mainFrame.Parent = gui
 
--- Левая панель (иконки)
 local sideBar = Instance.new("Frame")
 sideBar.Size = UDim2.new(0, 50, 1, 0)
 sideBar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
@@ -43,33 +44,26 @@ sideBar.Parent = mainFrame
 Instance.new("UIStroke", sideBar).Color = Color3.fromRGB(40, 40, 40)
 
 local tabs = {"Aimbot", "Visuals", "Misc", "Settings"}
-local currentTab = "Visuals" -- По умолчанию
+local currentTab = "Visuals"
 
 for i, tab in ipairs(tabs) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, 50)
     btn.Position = UDim2.new(0, 0, 0, (i-1)*50)
     btn.BackgroundColor3 = (tab == currentTab) and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(10, 10, 10)
-    btn.Text = string.sub(tab, 1, 1) -- Первая буква как иконка
+    btn.Text = string.sub(tab, 1, 1)
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 16
     btn.Parent = sideBar
-    
-    btn.MouseButton1Click:Connect(function()
-        -- Здесь логика переключения вкладок, но пока просто заглушка
-        print("Переключено на", tab)
-    end)
 end
 
--- Правая панель (контент)
 local content = Instance.new("Frame")
 content.Size = UDim2.new(1, -50, 1, 0)
 content.Position = UDim2.new(0, 50, 0, 0)
 content.BackgroundTransparency = 1
 content.Parent = mainFrame
 
--- Заголовок
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 30)
 titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
@@ -85,7 +79,6 @@ title.TextSize = 14
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = titleBar
 
--- Кнопка закрытия
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 25, 0, 25)
 closeBtn.Position = UDim2.new(1, -30, 0, 2)
@@ -95,8 +88,8 @@ closeBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.Parent = titleBar
 
--- Список чекбоксов
-local function createCheckbox(text, posY, defaultState)
+-- Функции для создания UI
+local function createCheckbox(text, posY, defaultState, settingName)
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, -20, 0, 20)
     lbl.Position = UDim2.new(0, 10, 0, posY)
@@ -116,10 +109,12 @@ local function createCheckbox(text, posY, defaultState)
     cb.Parent = lbl
     Instance.new("UICorner", cb).CornerRadius = UDim.new(0, 2)
     
-    return cb
+    cb.MouseButton1Click:Connect(function()
+        getgenv().ColinSettings[settingName] = not getgenv().ColinSettings[settingName]
+        cb.BackgroundColor3 = getgenv().ColinSettings[settingName] and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(30, 30, 30)
+    end)
 end
 
--- Ползунок
 local function createSlider(text, posY, value)
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, -20, 0, 20)
@@ -140,24 +135,21 @@ local function createSlider(text, posY, value)
     Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
 
     local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(value/200, 0, 1, 0) -- Пример заполнения
+    fill.Size = UDim2.new(value/200, 0, 1, 0)
     fill.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
     fill.Parent = bar
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 end
 
 -- Привязка элементов
-local cbEsp = createCheckbox("ESP Box", 40, true)
-local cbName = createCheckbox("Show Names", 70, true)
-createSlider("FOV", 100, 120)
-createSlider("Smooth", 130, 15)
+createCheckbox("ESP Box", 40, true, "ESP_ENABLED")
+createCheckbox("Aimbot Enable", 70, false, "AIMBOT_ENABLED")
+createCheckbox("Visual Check (No Wallbang)", 100, true, "VISUAL_CHECK")
+createCheckbox("Recoil Control", 130, true, "RECOIL_CONTROL")
+createSlider("FOV", 160, 120)
+createSlider("Smooth", 190, 15)
 
-cbEsp.MouseButton1Click:Connect(function()
-    getgenv().ColinSettings.ESP_ENABLED = not getgenv().ColinSettings.ESP_ENABLED
-    cbEsp.BackgroundColor3 = getgenv().ColinSettings.ESP_ENABLED and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(30, 30, 30)
-end)
-
--- Ватермарка "skeet 0.7"
+-- Ватермарка
 local watermark = Instance.new("TextLabel")
 watermark.Size = UDim2.new(0, 100, 0, 20)
 watermark.Position = UDim2.new(0, 10, 1, -30)
@@ -169,7 +161,6 @@ watermark.TextSize = 14
 watermark.Visible = false
 watermark.Parent = gui
 
--- Логика скрытия
 closeBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = false
     watermark.Visible = true
@@ -183,7 +174,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- ESP и Aimbot (рисование)
+-- ESP и Aimbot
 local ESP_Objects = {}
 local function createESP(player)
     if player == LocalPlayer then return end
@@ -234,7 +225,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Aimbot
+-- Визуальный Аимбот
 RunService.RenderStepped:Connect(function()
     if not getgenv().ColinSettings.AIMBOT_ENABLED then return end
     local closest = nil
@@ -244,12 +235,29 @@ RunService.RenderStepped:Connect(function()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChildOfClass("Humanoid") and player.Character.Humanoid.Health > 0 then
             if getgenv().ColinSettings.TEAM_CHECK and player.Team == LocalPlayer.Team then continue end
-            local headScreen, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
+            
+            local head = player.Character.Head
+            local headScreen, onScreen = Camera:WorldToViewportPoint(head.Position)
+            
             if onScreen then
-                local distance = (Vector2.new(headScreen.X, headScreen.Y) - mousePos).Magnitude
-                if distance < shortestDistance then
-                    shortestDistance = distance
-                    closest = player.Character.Head
+                -- Проверка на видимость (Raycast)
+                local isVisible = true
+                if getgenv().ColinSettings.VISUAL_CHECK then
+                    local rayParams = RaycastParams.new()
+                    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, player.Character}
+                    local ray = workspace:Raycast(Camera.CFrame.Position, (head.Position - Camera.CFrame.Position), rayParams)
+                    if ray then
+                        isVisible = false -- За текстурой
+                    end
+                end
+                
+                if isVisible then
+                    local distance = (Vector2.new(headScreen.X, headScreen.Y) - mousePos).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        closest = head
+                    end
                 end
             end
         end
@@ -260,5 +268,23 @@ RunService.RenderStepped:Connect(function()
         local newMousePos = Vector2.new(targetPos.X, targetPos.Y)
         local delta = (newMousePos - mousePos) * getgenv().ColinSettings.AIM_SMOOTH
         mousemoverel(delta.X, delta.Y)
+    end
+end)
+
+-- Recoil Control (Компенсация отдачи)
+local oldCameraCFrame = Camera.CFrame
+RunService.RenderStepped:Connect(function()
+    if not getgenv().ColinSettings.RECOIL_CONTROL then return end
+    
+    local mouse = UserInputService:GetMouseLocation()
+    
+    -- Логика компенсации: если зажата ЛКМ, тянем камеру вниз
+    if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+        local recoilAmount = 0.05 -- Настройка силы компенсации
+        local currentCFrame = Camera.CFrame
+        local newCFrame = currentCFrame * CFrame.Angles(math.rad(recoilAmount), 0, 0) -- Наклон вниз
+        
+        -- Применяем плавно
+        Camera.CFrame = Camera.CFrame:Lerp(newCFrame, 0.1)
     end
 end)
