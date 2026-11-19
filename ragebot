@@ -1,90 +1,168 @@
--- Colin's ESP, Legit Aimbot & GUI
+-- Colin's ESP & Aimbot for Xeno (Safe GUI)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
 
--- Настройки
-local ESP_ENABLED = true
-local AIMBOT_ENABLED = false
-local AIM_FOV = 100
-local AIM_SMOOTH = 0.15
-local TEAM_CHECK = true -- Игнорировать своих
-
--- Проверка на Drawing API
+-- Защита от краша
 if not Drawing then
-    game:GetService("StarterGui"):SetCore("SendNotification", {Title="Colin", Text="Твой инжектор не поддерживает Drawing API. Чит не запустится.", Duration=5})
+    StarterGui:SetCore("SendNotification", {Title="Colin", Text="Xeno не поддерживает Drawing.", Duration=5})
     return
 end
 
--- Таблица для хранения ESP
+-- Глобальные настройки
+getgenv().ColinSettings = {
+    ESP_ENABLED = true,
+    AIMBOT_ENABLED = false,
+    AIM_FOV = 120,
+    AIM_SMOOTH = 0.15,
+    TEAM_CHECK = true
+}
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "ColinMenu"
+gui.ResetOnSpawn = false
+gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 200, 0, 120)
+mainFrame.Position = UDim2.new(0.5, -100, 0.5, -60)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Parent = gui
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "Colin's Cheat Menu"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.Parent = mainFrame
+
+-- Кнопка скрытия
+local hideBtn = Instance.new("TextButton")
+hideBtn.Size = UDim2.new(0, 25, 0, 25)
+hideBtn.Position = UDim2.new(1, -30, 0, 2)
+hideBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+hideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+hideBtn.Text = "X"
+hideBtn.Font = Enum.Font.GothamBold
+hideBtn.TextSize = 14
+hideBtn.Parent = mainFrame
+Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 4)
+
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, 0, 1, -30)
+content.Position = UDim2.new(0, 0, 0, 30)
+content.BackgroundTransparency = 1
+content.Parent = mainFrame
+
+-- Кнопка ESP
+local espBtn = Instance.new("TextButton")
+espBtn.Size = UDim2.new(1, -20, 0, 30)
+espBtn.Position = UDim2.new(0, 10, 0, 5)
+espBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
+espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+espBtn.Text = "ESP: ВКЛ"
+espBtn.Font = Enum.Font.GothamBold
+espBtn.TextSize = 13
+espBtn.Parent = content
+Instance.new("UICorner", espBtn).CornerRadius = UDim.new(0, 6)
+
+-- Кнопка Aimbot
+local aimBtn = Instance.new("TextButton")
+aimBtn.Size = UDim2.new(1, -20, 0, 30)
+aimBtn.Position = UDim2.new(0, 10, 0, 40)
+aimBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+aimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+aimBtn.Text = "Aimbot: ВЫКЛ"
+aimBtn.Font = Enum.Font.GothamBold
+aimBtn.TextSize = 13
+aimBtn.Parent = content
+Instance.new("UICorner", aimBtn).CornerRadius = UDim.new(0, 6)
+
+-- Скрытие меню
+local isOpen = true
+local function toggleMenu()
+    isOpen = not isOpen
+    content.Visible = isOpen
+    hideBtn.Text = isOpen and "X" or "+"
+    hideBtn.BackgroundColor3 = isOpen and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(50, 200, 50)
+end
+
+hideBtn.MouseButton1Click:Connect(toggleMenu)
+
+-- Обработка кнопок
+espBtn.MouseButton1Click:Connect(function()
+    getgenv().ColinSettings.ESP_ENABLED = not getgenv().ColinSettings.ESP_ENABLED
+    espBtn.Text = "ESP: " .. (getgenv().ColinSettings.ESP_ENABLED and "ВКЛ" or "ВЫКЛ")
+    espBtn.BackgroundColor3 = getgenv().ColinSettings.ESP_ENABLED and Color3.fromRGB(40, 150, 40) or Color3.fromRGB(150, 40, 40)
+end)
+
+aimBtn.MouseButton1Click:Connect(function()
+    getgenv().ColinSettings.AIMBOT_ENABLED = not getgenv().ColinSettings.AIMBOT_ENABLED
+    aimBtn.Text = "Aimbot: " .. (getgenv().ColinSettings.AIMBOT_ENABLED and "ВКЛ" or "ВЫКЛ")
+    aimBtn.BackgroundColor3 = getgenv().ColinSettings.AIMBOT_ENABLED and Color3.fromRGB(40, 150, 40) or Color3.fromRGB(150, 40, 40)
+end)
+
+-- Бинд RightShift
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        toggleMenu()
+    end
+end)
+
+-- Логика ESP (Drawing)
 local ESP_Objects = {}
 
--- Функция создания ESP для игрока
 local function createESP(player)
     if player == LocalPlayer then return end
-    
     local box = Drawing.new("Square")
     box.Visible = false
-    box.Color = Color3.fromRGB(255, 0, 0)
     box.Thickness = 1
     box.Filled = false
-
     local name = Drawing.new("Text")
     name.Visible = false
-    name.Color = Color3.fromRGB(255, 255, 255)
     name.Size = 14
     name.Center = true
     name.Outline = true
-
     ESP_Objects[player] = {Box = box, Name = name}
 end
 
--- Удаление ESP
-local function removeESP(player)
-    if ESP_Objects[player] then
-        ESP_Objects[player].Box:Remove()
-        ESP_Objects[player].Name:Remove()
-        ESP_Objects[player] = nil
-    end
-end
-
--- Инициализация ESP для всех
-for _, p in ipairs(Players:GetPlayers()) do
-    createESP(p)
-end
+for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
 Players.PlayerAdded:Connect(createESP)
-Players.PlayerRemoving:Connect(removeESP)
+Players.PlayerRemoving:Connect(function(p)
+    if ESP_Objects[p] then
+        ESP_Objects[p].Box:Remove()
+        ESP_Objects[p].Name:Remove()
+        ESP_Objects[p] = nil
+    end
+end)
 
--- Основной цикл отрисовки
+-- Рисуем ESP
 RunService.RenderStepped:Connect(function()
     for player, esp in pairs(ESP_Objects) do
-        if ESP_ENABLED and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Head") then
+        if getgenv().ColinSettings.ESP_ENABLED and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("HumanoidRootPart") then
             local head = player.Character.Head
             local root = player.Character.HumanoidRootPart
-            
-            -- Проверка на команду (если нужно)
-            if TEAM_CHECK and player.Team == LocalPlayer.Team then
-                esp.Box.Visible = false
-                esp.Name.Visible = false
-                continue
-            end
-
             local headScreen, onScreen = Camera:WorldToViewportPoint(head.Position)
             local rootScreen, _ = Camera:WorldToViewportPoint(root.Position)
-
+            
             if onScreen then
                 local height = math.abs(headScreen.Y - rootScreen.Y) * 2
                 local width = height / 2
-                
-                -- Рисуем бокс
                 esp.Box.Size = Vector2.new(width, height)
                 esp.Box.Position = Vector2.new(headScreen.X - width/2, headScreen.Y - height/4)
                 esp.Box.Visible = true
                 esp.Box.Color = (player.Team == LocalPlayer.Team) and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-
-                -- Рисуем ник
+                
                 esp.Name.Text = player.Name
                 esp.Name.Position = Vector2.new(headScreen.X, headScreen.Y - 20)
                 esp.Name.Visible = true
@@ -99,18 +177,16 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Легитный Аимбот
+-- Логика Aimbot
 RunService.RenderStepped:Connect(function()
-    if not AIMBOT_ENABLED then return end
-    
+    if not getgenv().ColinSettings.AIMBOT_ENABLED then return end
     local closest = nil
-    local shortestDistance = AIM_FOV
+    local shortestDistance = getgenv().ColinSettings.AIM_FOV
     local mousePos = UserInputService:GetMouseLocation()
-    
+
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChildOfClass("Humanoid") and player.Character.Humanoid.Health > 0 then
-            if TEAM_CHECK and player.Team == LocalPlayer.Team then continue end
-            
+            if getgenv().ColinSettings.TEAM_CHECK and player.Team == LocalPlayer.Team then continue end
             local headScreen, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
             if onScreen then
                 local distance = (Vector2.new(headScreen.X, headScreen.Y) - mousePos).Magnitude
@@ -122,22 +198,10 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    if closest then
-        -- Плавное наведение (Legit)
+    if closest and mousemoverel then
         local targetPos = Camera:WorldToViewportPoint(closest.Position)
         local newMousePos = Vector2.new(targetPos.X, targetPos.Y)
-        local delta = (newMousePos - mousePos) * AIM_SMOOTH
-        
-        -- Двигаем мышь
+        local delta = (newMousePos - mousePos) * getgenv().ColinSettings.AIM_SMOOTH
         mousemoverel(delta.X, delta.Y)
-    end
-end)
-
--- Обработка клавиш (Toggle)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        AIMBOT_ENABLED = not AIMBOT_ENABLED
-        game:GetService("StarterGui"):SetCore("SendNotification", {Title="Colin", Text="Aimbot: " .. tostring(AIMBOT_ENABLED), Duration=2})
     end
 end)
