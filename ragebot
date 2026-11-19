@@ -1,209 +1,58 @@
--- Colin's Safe Hack with Keybind Toggle
+-- Colin's Ultimate Stealth Script (No GUI, Chat Command Only)
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
 
--- 1. Создаем GUI
-local gui = Instance.new("ScreenGui")
-gui.Name = "ColinSafeHack"
-gui.ResetOnSpawn = false
-gui.Parent = playerGui
-
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 320, 0, 280)
-frame.Position = UDim2.new(0.5, -160, 0.5, -140)
-frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Parent = gui
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-
--- Верхняя панель
-local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1, 0, 0, 30)
-topBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-topBar.BorderSizePixel = 0
-topBar.Parent = frame
-Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 8)
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -60, 1, 0)
-title.Position = UDim2.new(0, 10, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "Безопасный хак (Colin)"
-title.TextColor3 = Color3.fromRGB(255, 200, 0)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 14
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = topBar
-
--- Кнопка Скрыть/Показать (крестик/плюс)
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 25, 0, 25)
-toggleBtn.Position = UDim2.new(1, -30, 0, 2)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleBtn.Text = "X"
-toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.TextSize = 14
-toggleBtn.Parent = topBar
-Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 4)
-
--- Контент
-local content = Instance.new("Frame")
-content.Size = UDim2.new(1, 0, 1, -30)
-content.Position = UDim2.new(0, 0, 0, 30)
-content.BackgroundTransparency = 1
-content.Parent = frame
-
-local status = Instance.new("TextLabel")
-status.Size = UDim2.new(1, -20, 0, 40)
-status.Position = UDim2.new(0, 10, 0, 5)
-status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(180, 180, 180)
-status.Text = "Скрыть/Показать: RightCtrl или RightShift"
-status.Font = Enum.Font.Gotham
-status.TextSize = 12
-status.TextWrapped = true
-status.Parent = content
-
-local inputAmount = Instance.new("TextBox")
-inputAmount.Size = UDim2.new(1, -20, 0, 36)
-inputAmount.Position = UDim2.new(0, 10, 0, 50)
-inputAmount.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-inputAmount.TextColor3 = Color3.fromRGB(255, 255, 255)
-inputAmount.PlaceholderText = "Желаемая сумма"
-inputAmount.Text = "100000"
-inputAmount.Parent = content
-Instance.new("UICorner", inputAmount).CornerRadius = UDim.new(0, 6)
-
--- Кнопка взлома
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(1, -20, 0, 44)
-button.Position = UDim2.new(0, 10, 0, 95)
-button.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.Text = "Хакнуть / Взломать"
-button.Font = Enum.Font.GothamBold
-button.TextSize = 15
-button.Parent = content
-Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
-
-local logOutput = Instance.new("TextLabel")
-logOutput.Size = UDim2.new(1, -20, 0, 60)
-logOutput.Position = UDim2.new(0, 10, 0, 145)
-logOutput.BackgroundTransparency = 1
-logOutput.TextColor3 = Color3.fromRGB(255, 100, 100)
-logOutput.Text = "Жди. Отправка с задержкой 1 сек."
-logOutput.Font = Enum.Font.Code
-logOutput.TextSize = 12
-logOutput.TextWrapped = true
-logOutput.Parent = content
-
--- 2. Логика скрытия/разворачивания через кнопку
-local isOpen = true
-local function toggleMenu()
-    isOpen = not isOpen
-    if isOpen then
-        frame:TweenSize(UDim2.new(0, 320, 0, 280), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
-        content.Visible = true
-        toggleBtn.Text = "X"
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    else
-        frame:TweenSize(UDim2.new(0, 320, 0, 30), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
-        content.Visible = false
-        toggleBtn.Text = "+"
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-    end
+-- Функция уведомления (нативная, безопасная)
+local function notify(text)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "System";
+            Text = text;
+            Duration = 3;
+        })
+    end)
 end
 
-toggleBtn.MouseButton1Click:Connect(toggleMenu)
-
--- 3. Бинд на клавишу (RightControl и RightShift)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.RightControl or input.KeyCode == Enum.KeyCode.RightShift then
-        toggleMenu()
-    end
-end)
-
--- 4. Логика перетаскивания
-local dragging = false
-local dragInput, dragStart, startPos
-
-local function update(input)
-    local delta = input.Position - dragStart
-    frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
-
-topBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
+-- Слушаем чат
+player.Chatted:Connect(function(msg)
+    -- Проверяем, начинается ли сообщение с /hack
+    if string.sub(msg, 1, 5) == "/hack" then
+        local amount = tonumber(string.sub(msg, 7))
+        if not amount then
+            notify("Ошибка: /hack [число]")
+            return
+        end
+        
+        notify("Отправка: " .. tostring(amount))
+        
+        -- Тихий перебор ремоутов без GUI
+        local commonNames = {
+            "AddCoins", "GiveCash", "Cash", "Coins", "Money", 
+            "AddCash", "GiveMoney", "UpdateBalance", "Reward", 
+            "Claim", "Buy", "Sell"
+        }
+        
+        local eventsFolder = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage
+        
+        -- Используем task.spawn, чтобы не вешать чат
+        task.spawn(function()
+            for _, name in ipairs(commonNames) do
+                local remote = eventsFolder:FindFirstChild(name, true)
+                if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
+                    pcall(function()
+                        if remote:IsA("RemoteEvent") then
+                            remote:FireServer(amount)
+                            remote:FireServer("currency", amount)
+                        elseif remote:IsA("RemoteFunction") then
+                            remote:InvokeServer(amount)
+                        end
+                    end)
+                    task.wait(1.5) -- Большая задержка, чтобы сервер не крашнул
+                end
             end
+            notify("Перебор окончен.")
         end)
     end
-end)
-
-topBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        update(input)
-    end
-end)
-
--- 5. Безопасная отправка с задержкой
-button.MouseButton1Click:Connect(function()
-    local amount = tonumber(inputAmount.Text)
-    if not amount then
-        status.Text = "Ошибка: введи число!"
-        return
-    end
-
-    status.Text = "Перебор ремоутов..."
-    logOutput.Text = "Начинаю тихий перебор. Жди."
-    
-    local commonNames = {
-        "AddCoins", "GiveCash", "Cash", "Coins", "Money", 
-        "AddCash", "GiveMoney", "UpdateBalance", "Reward", 
-        "Buy", "Sell", "Purchase", "Claim"
-    }
-    
-    local eventsFolder = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage
-    
-    task.spawn(function()
-        for _, name in ipairs(commonNames) do
-            local remote = eventsFolder:FindFirstChild(name, true)
-            if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
-                status.Text = "Проверяю: " .. name
-                logOutput.Text = "Стреляю в: " .. name
-                
-                pcall(function()
-                    if remote:IsA("RemoteEvent") then
-                        remote:FireServer(amount)
-                        remote:FireServer("currency", amount)
-                        remote:FireServer({amount = amount})
-                    elseif remote:IsA("RemoteFunction") then
-                        remote:InvokeServer(amount)
-                    end
-                end)
-                
-                task.wait(1) -- Задержка 1 секунда
-            end
-        end
-        status.Text = "Перебор завершен."
-        logOutput.Text = "Все имена проверены."
-    end)
 end)
