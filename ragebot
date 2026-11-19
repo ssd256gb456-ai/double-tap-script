@@ -1,58 +1,96 @@
--- Colin's Ultimate Stealth Script (No GUI, Chat Command Only)
+-- Colin's Stealth Action Spoofer (Kill/Spray/Capture)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 
--- Функция уведомления (нативная, безопасная)
 local function notify(text)
     pcall(function()
         StarterGui:SetCore("SendNotification", {
-            Title = "System";
+            Title = "Colin's Hack";
             Text = text;
             Duration = 3;
         })
     end)
 end
 
--- Слушаем чат
 player.Chatted:Connect(function(msg)
-    -- Проверяем, начинается ли сообщение с /hack
-    if string.sub(msg, 1, 5) == "/hack" then
-        local amount = tonumber(string.sub(msg, 7))
-        if not amount then
-            notify("Ошибка: /hack [число]")
-            return
-        end
+    local args = string.split(msg, " ")
+    local cmd = string.lower(args[1])
+
+    -- Команда для убийства (фейковая награда)
+    if cmd == "/kill" then
+        notify("Поиск ремоутов на убийство...")
+        local targetName = args[2]
         
-        notify("Отправка: " .. tostring(amount))
-        
-        -- Тихий перебор ремоутов без GUI
-        local commonNames = {
-            "AddCoins", "GiveCash", "Cash", "Coins", "Money", 
-            "AddCash", "GiveMoney", "UpdateBalance", "Reward", 
-            "Claim", "Buy", "Sell"
-        }
-        
-        local eventsFolder = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage
-        
-        -- Используем task.spawn, чтобы не вешать чат
-        task.spawn(function()
-            for _, name in ipairs(commonNames) do
-                local remote = eventsFolder:FindFirstChild(name, true)
-                if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
+        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                local n = string.lower(obj.Name)
+                if string.find(n, "kill") or string.find(n, "death") or string.find(n, "damage") or string.find(n, "reward") then
                     pcall(function()
-                        if remote:IsA("RemoteEvent") then
-                            remote:FireServer(amount)
-                            remote:FireServer("currency", amount)
-                        elseif remote:IsA("RemoteFunction") then
-                            remote:InvokeServer(amount)
+                        if obj:IsA("RemoteEvent") then
+                            -- Шлем имя жертвы и фейковый урон
+                            obj:FireServer(targetName or "Player1", 9999)
+                            obj:FireServer(9999) -- На случай, если сервер ждет просто урон
+                        elseif obj:IsA("RemoteFunction") then
+                            obj:InvokeServer(targetName or "Player1", 9999)
                         end
                     end)
-                    task.wait(1.5) -- Большая задержка, чтобы сервер не крашнул
+                    task.wait(0.5)
                 end
             end
-            notify("Перебор окончен.")
-        end)
+        end
+        notify("Убийство отправлено.")
+    end
+
+    -- Команда для граффити
+    if cmd == "/spray" then
+        notify("Поиск ремоутов на граффити...")
+        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                local n = string.lower(obj.Name)
+                if string.find(n, "spray") or string.find(n, "paint") or string.find(n, "graffiti") or string.find(n, "draw") then
+                    pcall(function()
+                        if obj:IsA("RemoteEvent") then
+                            -- Шлем фейковые координаты (центр карты) и ID цвета
+                            obj:FireServer(Vector3.new(0, 0, 0), 1)
+                            obj:FireServer("Spray", 1)
+                        elseif obj:IsA("RemoteFunction") then
+                            obj:InvokeServer(Vector3.new(0, 0, 0), 1)
+                        end
+                    end)
+                    task.wait(0.5)
+                end
+            end
+        end
+        notify("Граффити отправлено.")
+    end
+
+    -- Команда для захвата
+    if cmd == "/capture" then
+        notify("Поиск ремоутов на захват...")
+        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                local n = string.lower(obj.Name)
+                if string.find(n, "capture") or string.find(n, "point") or string.find(n, "zone") or string.find(n, "territory") then
+                    pcall(function()
+                        if obj:IsA("RemoteEvent") then
+                            -- Шлем ID точки (1, 2, 3...) и фейковый статус
+                            obj:FireServer(1, true)
+                            obj:FireServer("Capture", true)
+                        elseif obj:IsA("RemoteFunction") then
+                            obj:InvokeServer(1, true)
+                        end
+                    end)
+                    task.wait(0.5)
+                end
+            end
+        end
+        notify("Захват отправлен.")
+    end
+    
+    -- Инфо
+    if cmd == "/hackhelp" then
+        notify("Команды: /kill [ник], /spray, /capture")
     end
 end)
