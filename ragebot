@@ -1,4 +1,4 @@
--- Colin's Safe & Stable GUI (No Crashes, No Hooks)
+-- Colin's Safe Hack with Keybind Toggle
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -39,15 +39,15 @@ title.TextSize = 14
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = topBar
 
--- Кнопка Скрыть/Показать
+-- Кнопка Скрыть/Показать (крестик/плюс)
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 25, 0, 25)
 toggleBtn.Position = UDim2.new(1, -30, 0, 2)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleBtn.Text = "-"
+toggleBtn.Text = "X"
 toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.TextSize = 16
+toggleBtn.TextSize = 14
 toggleBtn.Parent = topBar
 Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 4)
 
@@ -63,9 +63,9 @@ status.Size = UDim2.new(1, -20, 0, 40)
 status.Position = UDim2.new(0, 10, 0, 5)
 status.BackgroundTransparency = 1
 status.TextColor3 = Color3.fromRGB(180, 180, 180)
-status.Text = "Готов к безопасному взлому."
+status.Text = "Скрыть/Показать: RightCtrl или RightShift"
 status.Font = Enum.Font.Gotham
-status.TextSize = 13
+status.TextSize = 12
 status.TextWrapped = true
 status.Parent = content
 
@@ -102,14 +102,14 @@ logOutput.TextSize = 12
 logOutput.TextWrapped = true
 logOutput.Parent = content
 
--- 2. Логика скрытия/разворачивания
+-- 2. Логика скрытия/разворачивания через кнопку
 local isOpen = true
-toggleBtn.MouseButton1Click:Connect(function()
+local function toggleMenu()
     isOpen = not isOpen
     if isOpen then
         frame:TweenSize(UDim2.new(0, 320, 0, 280), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
         content.Visible = true
-        toggleBtn.Text = "-"
+        toggleBtn.Text = "X"
         toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     else
         frame:TweenSize(UDim2.new(0, 320, 0, 30), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
@@ -117,9 +117,19 @@ toggleBtn.MouseButton1Click:Connect(function()
         toggleBtn.Text = "+"
         toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
     end
+end
+
+toggleBtn.MouseButton1Click:Connect(toggleMenu)
+
+-- 3. Бинд на клавишу (RightControl и RightShift)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightControl or input.KeyCode == Enum.KeyCode.RightShift then
+        toggleMenu()
+    end
 end)
 
--- 3. Логика перетаскивания
+-- 4. Логика перетаскивания
 local dragging = false
 local dragInput, dragStart, startPos
 
@@ -154,7 +164,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- 4. Безопасная отправка с задержкой
+-- 5. Безопасная отправка с задержкой
 button.MouseButton1Click:Connect(function()
     local amount = tonumber(inputAmount.Text)
     if not amount then
@@ -175,7 +185,7 @@ button.MouseButton1Click:Connect(function()
     
     task.spawn(function()
         for _, name in ipairs(commonNames) do
-            local remote = eventsFolder:FindFirstChild(name, true) -- true = рекурсивный поиск
+            local remote = eventsFolder:FindFirstChild(name, true)
             if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
                 status.Text = "Проверяю: " .. name
                 logOutput.Text = "Стреляю в: " .. name
@@ -190,10 +200,10 @@ button.MouseButton1Click:Connect(function()
                     end
                 end)
                 
-                task.wait(1) -- Задержка 1 секунда, чтобы античит не крашнул
+                task.wait(1) -- Задержка 1 секунда
             end
         end
         status.Text = "Перебор завершен."
-        logOutput.Text = "Все имена проверены. Если денег нет — сервер защищен."
+        logOutput.Text = "Все имена проверены."
     end)
 end)
