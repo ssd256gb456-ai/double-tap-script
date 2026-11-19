@@ -1,19 +1,19 @@
--- Colin's Security Scanner & Vulnerability Auditor
+-- Colin's Blind Remote Bomber & GUI
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Создаем интерфейс
+-- 1. Создаем GUI
 local gui = Instance.new("ScreenGui")
-gui.Name = "ColinVulnScanner"
+gui.Name = "ColinBlindBomber"
 gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 400, 0, 350)
-frame.Position = UDim2.new(0.5, -200, 0.5, -175)
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.Size = UDim2.new(0, 300, 0, 200)
+frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
 frame.Parent = gui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
@@ -21,97 +21,87 @@ Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundTransparency = 1
-title.Text = "Сканер уязвимостей (Colin's Audit)"
-title.TextColor3 = Color3.fromRGB(255, 200, 0)
+title.Text = "Слепой бомбер (Colin)"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 16
 title.Parent = frame
 
--- Текстовое поле для вывода логов
-local output = Instance.new("ScrollingFrame")
-output.Size = UDim2.new(1, -20, 0, 250)
-output.Position = UDim2.new(0, 10, 0, 40)
-output.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-output.BorderSizePixel = 0
-output.CanvasSize = UDim2.new(0, 0, 0, 0)
-output.AutomaticCanvasSize = Enum.AutomaticSize.Y
-output.Parent = frame
-Instance.new("UICorner", output).CornerRadius = UDim.new(0, 6)
+-- Поле суммы
+local inputAmount = Instance.new("TextBox")
+inputAmount.Size = UDim2.new(1, -20, 0, 36)
+inputAmount.Position = UDim2.new(0, 10, 0, 40)
+inputAmount.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+inputAmount.TextColor3 = Color3.fromRGB(255, 255, 255)
+inputAmount.PlaceholderText = "Сумма (999999)"
+inputAmount.Text = "999999"
+inputAmount.Parent = frame
+Instance.new("UICorner", inputAmount).CornerRadius = UDim.new(0, 6)
 
-local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 4)
-layout.Parent = output
+-- Кнопка
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, -20, 0, 44)
+button.Position = UDim2.new(0, 10, 0, 85)
+button.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Text = "Бомбить все ремоуты"
+button.Font = Enum.Font.GothamBold
+button.TextSize = 15
+button.Parent = frame
+Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
 
-local function log(text, color)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -10, 0, 20)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text
-    lbl.TextColor3 = color or Color3.fromRGB(200, 200, 200)
-    lbl.Font = Enum.Font.Code
-    lbl.TextSize = 12
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.TextWrapped = true
-    lbl.Parent = output
-    print(text) -- Дублируем в консоль
-end
+-- Статус
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, -20, 0, 50)
+status.Position = UDim2.new(0, 10, 0, 140)
+status.BackgroundTransparency = 1
+status.TextColor3 = Color3.fromRGB(180, 180, 180)
+status.Text = "Жди. Я пробью все ремоуты."
+status.Font = Enum.Font.Gotham
+status.TextSize = 13
+status.TextWrapped = true
+status.Parent = frame
 
--- Кнопка сканирования
-local scanBtn = Instance.new("TextButton")
-scanBtn.Size = UDim2.new(1, -20, 0, 40)
-scanBtn.Position = UDim2.new(0, 10, 0, 300)
-scanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
-scanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-scanBtn.Text = "Запустить сканирование уязвимостей"
-scanBtn.Font = Enum.Font.GothamBold
-scanBtn.TextSize = 14
-scanBtn.Parent = frame
-Instance.new("UICorner", scanBtn).CornerRadius = UDim.new(0, 6)
-
-scanBtn.MouseButton1Click:Connect(function()
-    output:ClearAllChildren()
-    Instance.new("UIListLayout", output).Padding = UDim.new(0, 4)
-    log("[*] Начинаю сканирование...", Color3.fromRGB(255, 255, 255))
-
-    local vulnCount = 0
-
-    -- 1. Ищем RemoteEvents и RemoteFunctions
-    log("[*] Анализ RemoteEvents/Functions...", Color3.fromRGB(200, 200, 0))
-    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            log("[Remote] " .. obj:GetFullName(), Color3.fromRGB(150, 200, 255))
-            -- Проверка на "громкие" имена, которые обычно уязвимы
-            local n = string.lower(obj.Name)
-            if string.find(n, "give") or string.find(n, "add") or string.find(n, "cash") or string.find(n, "coin") then
-                log("  [!] Подозрительное имя: возможна выдача валюты", Color3.fromRGB(255, 100, 100))
-                vulnCount = vulnCount + 1
-            end
-        end
+-- 2. Логика поиска и бомбежки
+button.MouseButton1Click:Connect(function()
+    local amount = tonumber(inputAmount.Text)
+    if not amount then
+        status.Text = "Ошибка: введи число!"
+        return
     end
 
-    -- 2. Ищем LoadString (очень плохо для игры)
-    log("[*] Поиск loadstring/require...", Color3.fromRGB(200, 200, 0))
+    status.Text = "Поиск ремоутов и отправка..."
+    
+    local count = 0
+    local hitLog = {}
+
+    -- Ищем все ремоуты во всей игре (включая ReplicatedStorage и Workspace)
     for _, obj in ipairs(game:GetDescendants()) do
-        if obj:IsA("Script") or obj:IsA("LocalScript") then
-            -- В обфусцированном коде мы не прочитаем текст, но имя может выдать
-            if string.find(string.lower(obj.Name), "admin") or string.find(string.lower(obj.Name), "give") then
-                 log("  [!] Подозрительный скрипт: " .. obj:GetFullName(), Color3.fromRGB(255, 150, 0))
-                 vulnCount = vulnCount + 1
-            end
+        if obj:IsA("RemoteEvent") then
+            -- Пытаемся отправить сумму
+            pcall(function()
+                obj:FireServer(amount)
+                -- На всякий случай шлем еще и таблицу (некоторые игры ждут таблицу)
+                obj:FireServer("currency", amount)
+                obj:FireServer({amount = amount})
+            end)
+            count = count + 1
+            table.insert(hitLog, obj:GetFullName())
+        elseif obj:IsA("RemoteFunction") then
+            -- Для RemoteFunction вызываем
+            pcall(function()
+                obj:InvokeServer(amount)
+            end)
+            count = count + 1
+            table.insert(hitLog, obj:GetFullName())
         end
     end
 
-    -- 3. Проверяем HTTP-запросы (опасно, если злоумышленник может инжектить)
-    log("[*] Анализ HttpService (может быть отключен)...", Color3.fromRGB(200, 200, 0))
-    local http = game:GetService("HttpService")
-    log("  [i] HttpService Enabled: " .. tostring(http.HttpEnabled), Color3.fromRGB(150, 150, 150))
-
-    -- 4. Итог
-    log("[*] Сканирование завершено.", Color3.fromRGB(255, 255, 255))
-    if vulnCount > 0 then
-        log("[!] Найдено потенциальных уязвимостей: " .. vulnCount, Color3.fromRGB(255, 50, 50))
-        log("  -> Используй прошлый скрипт с кнопками, чтобы проверить эти ремоуты.", Color3.fromRGB(255, 200, 0))
-    else
-        log("[+] Явных дыр не найдено. Сервер может быть защищен.", Color3.fromRGB(50, 255, 50))
+    -- Выводим в консоль, куда стреляли
+    print("[Colin Bomber] Отправлено в " .. count .. " ремоутов:")
+    for _, v in ipairs(hitLog) do
+        print(" -> " .. v)
     end
+
+    status.Text = "Отправлено в " .. count .. " ремоутов. Проверь баланс."
 end)
