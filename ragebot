@@ -1,230 +1,85 @@
--- NEVERLOSE v1111 - Head Down Fix
--- Only head tilts down in Down mode
-
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+-- Colin's GUI money hack script
+-- LocalScript / executor. Change the remote path and arg format to match the target game.
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Config = {
-    BunnyHop = false,
-    AntiAim = false,
-    AntiAimMode = "Random", -- "Random", "HeadDown", "Spin"
-    ESP = false
-}
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-local LocalPlayer = Players.LocalPlayer
+-- Шаг 1: Укажи RemoteEvent, который выдаёт валюту
+local remote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("coins") -- поменяй путь
 
--- Simple GUI
-local function CreateSimpleMenu()
-    local mainGUI = Instance.new("ScreenGui")
-    mainGUI.Name = "Neverlosev1111"
-    mainGUI.Parent = CoreGui
-    
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 300, 0, 200)
-    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Parent = mainGUI
-    
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Text = "NEVERLOSE v1111 - HEAD DOWN FIX"
-    title.TextColor3 = Color3.fromRGB(0, 255, 255)
-    title.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 14
-    title.Parent = mainFrame
-    
-    local content = Instance.new("Frame")
-    content.Size = UDim2.new(1, -10, 1, -40)
-    content.Position = UDim2.new(0, 5, 0, 35)
-    content.BackgroundTransparency = 1
-    content.Parent = mainFrame
-    
-    -- Toggle buttons
-    local function AddToggle(text, configKey, yPos)
-        local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, 0, 0, 25)
-        button.Position = UDim2.new(0, 0, 0, yPos)
-        button.Text = text .. ": OFF"
-        button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        button.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-        button.Font = Enum.Font.Gotham
-        button.TextSize = 12
-        button.Parent = content
-        
-        button.MouseButton1Click:Connect(function()
-            Config[configKey] = not Config[configKey]
-            button.Text = text .. ": " .. (Config[configKey] and "ON" or "OFF")
-            button.BackgroundColor3 = Config[configKey] and Color3.fromRGB(0, 100, 200) or Color3.fromRGB(50, 50, 60)
-        end)
+-- Шаг 2: Создаём ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.Name = "ColinHackMenu"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+-- Шаг 3: Создаём фрейм меню
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 260, 0, 160)
+frame.Position = UDim2.new(0.5, -130, 0.5, -80)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+-- Шаг 4: Поле для ввода числа
+local input = Instance.new("TextBox")
+input.Size = UDim2.new(1, -20, 0, 36)
+input.Position = UDim2.new(0, 10, 0, 10)
+input.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+input.TextColor3 = Color3.fromRGB(255, 255, 255)
+input.PlaceholderText = "Введи сумму"
+input.Text = "999999"
+input.ClearTextOnFocus = false
+input.Parent = frame
+
+local inputCorner = Instance.new("UICorner")
+inputCorner.CornerRadius = UDim.new(0, 6)
+inputCorner.Parent = input
+
+-- Шаг 5: Кнопка "Хакнуть / Взломать / Взорвать"
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, -20, 0, 44)
+button.Position = UDim2.new(0, 10, 0, 56)
+button.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Text = "Хакнуть / Взломать / Взорвать"
+button.Font = Enum.Font.GothamBold
+button.TextSize = 15
+button.Parent = frame
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 6)
+buttonCorner.Parent = button
+
+-- Шаг 6: Статус-лейбл
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, -20, 0, 30)
+status.Position = UDim2.new(0, 10, 0, 108)
+status.BackgroundTransparency = 1
+status.TextColor3 = Color3.fromRGB(180, 180, 180)
+status.Text = "Готов"
+status.Font = Enum.Font.Gotham
+status.TextSize = 14
+status.Parent = frame
+
+-- Шаг 7: Обработчик кнопки — читаем число и шлём в ремоут
+button.MouseButton1Click:Connect(function()
+    local amount = tonumber(input.Text)
+    if not amount then
+        status.Text = "Введи число"
+        return
     end
-    
-    -- Mode selector - теперь HeadDown вместо BodyDown
-    local modeButton = Instance.new("TextButton")
-    modeButton.Size = UDim2.new(1, 0, 0, 25)
-    modeButton.Position = UDim2.new(0, 0, 0, 80)
-    modeButton.Text = "AntiAim Mode: Random"
-    modeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    modeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    modeButton.Font = Enum.Font.Gotham
-    modeButton.TextSize = 12
-    modeButton.Parent = content
-    
-    modeButton.MouseButton1Click:Connect(function()
-        local modes = {"Random", "HeadDown", "Spin"}
-        local current = Config.AntiAimMode
-        local nextIndex = 1
-        
-        for i, mode in ipairs(modes) do
-            if mode == current then
-                nextIndex = (i % #modes) + 1
-                break
-            end
-        end
-        
-        Config.AntiAimMode = modes[nextIndex]
-        modeButton.Text = "AntiAim Mode: " .. Config.AntiAimMode
-    end)
-    
-    AddToggle("BunnyHop", "BunnyHop", 0)
-    AddToggle("AntiAim", "AntiAim", 30)
-    AddToggle("ESP", "ESP", 55)
-    
-    local info = Instance.new("TextLabel")
-    info.Size = UDim2.new(1, 0, 0, 40)
-    info.Position = UDim2.new(0, 0, 1, -40)
-    info.Text = "HeadDown: Only head tilts down\nBody stays upright"
-    info.TextColor3 = Color3.fromRGB(150, 150, 200)
-    info.BackgroundTransparency = 1
-    info.TextSize = 10
-    info.Font = Enum.Font.Gotham
-    info.Parent = content
-    
-    return mainGUI
-end
+    status.Text = "Отправлено: " .. tostring(amount)
 
--- Fixed AntiAim with Head Down only
-local function StartAntiAim()
-    while true do
-        if Config.AntiAim and LocalPlayer.Character then
-            local character = LocalPlayer.Character
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            local root = character:FindFirstChild("HumanoidRootPart")
-            local head = character:FindFirstChild("Head")
-            
-            if humanoid and root then
-                humanoid.AutoRotate = false
-                
-                if Config.AntiAimMode == "Random" then
-                    -- Random body rotation
-                    local randomAngle = math.random(0, 360)
-                    character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, math.rad(randomAngle), 0))
-                    
-                elseif Config.AntiAimMode == "HeadDown" then
-                    -- ТОЛЬКО голова вниз, тело прямо
-                    if head then
-                        -- Тело остается прямым
-                        character:SetPrimaryPartCFrame(CFrame.new(root.Position))
-                        -- Голова наклоняется вниз на 60 градусов
-                        head.CFrame = root.CFrame * CFrame.Angles(math.rad(60), 0, 0)
-                    end
-                    
-                elseif Config.AntiAimMode == "Spin" then
-                    -- Spinbot всего тела
-                    local spin = tick() * 6
-                    character:SetPrimaryPartCFrame(CFrame.new(root.Position) * CFrame.Angles(0, spin, 0))
-                end
-            end
-        end
-        wait()
-    end
-end
-
--- BunnyHop
-local function StartBunnyHop()
-    while true do
-        if Config.BunnyHop and LocalPlayer.Character then
-            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.MoveDirection.Magnitude > 0 then
-                humanoid.Jump = true
-            end
-        end
-        wait(0.1)
-    end
-end
-
--- ESP
-local function StartESP()
-    local highlights = {}
-    
-    while true do
-        if Config.ESP then
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character then
-                    if not highlights[player] then
-                        local highlight = Instance.new("Highlight")
-                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        highlight.FillTransparency = 0.8
-                        highlight.Parent = player.Character
-                        highlights[player] = highlight
-                    end
-                    highlights[player].Adornee = player.Character
-                else
-                    if highlights[player] then
-                        highlights[player]:Destroy()
-                        highlights[player] = nil
-                    end
-                end
-            end
-        else
-            for player, highlight in pairs(highlights) do
-                highlight:Destroy()
-            end
-            highlights = {}
-        end
-        wait(0.5)
-    end
-end
-
--- Menu toggle
-local function SetupToggle(menu)
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.Delete then
-            menu.Enabled = not menu.Enabled
-        end
-    end)
-end
-
--- Main injection
-local function InjectNeverlose()
-    print("NEVERLOSE v1111 Injecting...")
-    
-    local menu = CreateSimpleMenu()
-    SetupToggle(menu)
-    
-    coroutine.wrap(StartBunnyHop)()
-    coroutine.wrap(StartAntiAim)()
-    coroutine.wrap(StartESP)()
-    
-    print("NEVERLOSE v1111 Successfully Injected!")
-    print("HeadDown mode: Only head tilts down")
-    
-    return true
-end
-
--- Safe execute
-local success, err = pcall(InjectNeverlose)
-
-if success then
-    print("🎯 NEVERLOSE v1111 READY! HeadDown mode fixed")
-else
-    print("❌ Error: " .. tostring(err))
-end
+    -- Шаг 8: Формат аргументов — поменяй под игру (число или таблица)
+    -- Пример 1: remote:FireServer(amount)
+    -- Пример 2: remote:FireServer("currencyReward", {"bucks", amount})
+    remote:FireServer(amount)
+end)
