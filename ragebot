@@ -1,4 +1,4 @@
--- Colin's Final ESP & Aimbot (Skeet Watermark Edition)
+-- Colin's Skeet-Style UI (ESP & Aimbot)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -19,87 +19,143 @@ getgenv().ColinSettings = {
     TEAM_CHECK = true
 }
 
+-- Основной экран
 local gui = Instance.new("ScreenGui")
-gui.Name = "ColinMenu"
+gui.Name = "ColinSkeetUI"
 gui.ResetOnSpawn = false
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 200, 0, 150)
-mainFrame.Position = UDim2.new(0.5, -100, 0.5, -75)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-mainFrame.BorderSizePixel = 0
+mainFrame.Size = UDim2.new(0, 500, 0, 350)
+mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+mainFrame.BorderSizePixel = 1
+mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
 mainFrame.Active = true
 mainFrame.Parent = gui
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
 
-local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1, 0, 0, 30)
-topBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-topBar.BorderSizePixel = 0
-topBar.Parent = mainFrame
-Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 8)
+-- Левая панель (иконки)
+local sideBar = Instance.new("Frame")
+sideBar.Size = UDim2.new(0, 50, 1, 0)
+sideBar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+sideBar.BorderSizePixel = 0
+sideBar.Parent = mainFrame
+Instance.new("UIStroke", sideBar).Color = Color3.fromRGB(40, 40, 40)
+
+local tabs = {"Aimbot", "Visuals", "Misc", "Settings"}
+local currentTab = "Visuals" -- По умолчанию
+
+for i, tab in ipairs(tabs) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 50)
+    btn.Position = UDim2.new(0, 0, 0, (i-1)*50)
+    btn.BackgroundColor3 = (tab == currentTab) and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(10, 10, 10)
+    btn.Text = string.sub(tab, 1, 1) -- Первая буква как иконка
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 16
+    btn.Parent = sideBar
+    
+    btn.MouseButton1Click:Connect(function()
+        -- Здесь логика переключения вкладок, но пока просто заглушка
+        print("Переключено на", tab)
+    end)
+end
+
+-- Правая панель (контент)
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, -50, 1, 0)
+content.Position = UDim2.new(0, 50, 0, 0)
+content.BackgroundTransparency = 1
+content.Parent = mainFrame
+
+-- Заголовок
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+titleBar.Parent = content
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -60, 1, 0)
-title.Position = UDim2.new(0, 10, 0, 0)
+title.Size = UDim2.new(1, 0, 1, 0)
 title.BackgroundTransparency = 1
-title.Text = "Colin's Cheat Menu"
+title.Text = "Visuals"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = topBar
+title.Parent = titleBar
 
-local hideBtn = Instance.new("TextButton")
-hideBtn.Size = UDim2.new(0, 25, 0, 25)
-hideBtn.Position = UDim2.new(1, -30, 0, 2)
-hideBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-hideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-hideBtn.Text = "X"
-hideBtn.Font = Enum.Font.GothamBold
-hideBtn.TextSize = 14
-hideBtn.Parent = topBar
-Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 4)
+-- Кнопка закрытия
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.Position = UDim2.new(1, -30, 0, 2)
+closeBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Parent = titleBar
 
-local content = Instance.new("Frame")
-content.Size = UDim2.new(1, 0, 1, -30)
-content.Position = UDim2.new(0, 0, 0, 30)
-content.BackgroundTransparency = 1
-content.Parent = mainFrame
+-- Список чекбоксов
+local function createCheckbox(text, posY, defaultState)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -20, 0, 20)
+    lbl.Position = UDim2.new(0, 10, 0, posY)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextSize = 13
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = content
 
-local espBtn = Instance.new("TextButton")
-espBtn.Size = UDim2.new(1, -20, 0, 30)
-espBtn.Position = UDim2.new(0, 10, 0, 5)
-espBtn.BackgroundColor3 = Color3.fromRGB(40, 150, 40)
-espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-espBtn.Text = "ESP: ВКЛ"
-espBtn.Font = Enum.Font.GothamBold
-espBtn.TextSize = 13
-espBtn.Parent = content
-Instance.new("UICorner", espBtn).CornerRadius = UDim.new(0, 6)
+    local cb = Instance.new("TextButton")
+    cb.Size = UDim2.new(0, 15, 0, 15)
+    cb.Position = UDim2.new(0, -5, 0, 2)
+    cb.BackgroundColor3 = defaultState and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(30, 30, 30)
+    cb.Text = ""
+    cb.Parent = lbl
+    Instance.new("UICorner", cb).CornerRadius = UDim.new(0, 2)
+    
+    return cb
+end
 
-local aimBtn = Instance.new("TextButton")
-aimBtn.Size = UDim2.new(1, -20, 0, 30)
-aimBtn.Position = UDim2.new(0, 10, 0, 40)
-aimBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
-aimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-aimBtn.Text = "Aimbot: ВЫКЛ"
-aimBtn.Font = Enum.Font.GothamBold
-aimBtn.TextSize = 13
-aimBtn.Parent = content
-Instance.new("UICorner", aimBtn).CornerRadius = UDim.new(0, 6)
+-- Ползунок
+local function createSlider(text, posY, value)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -20, 0, 20)
+    lbl.Position = UDim2.new(0, 10, 0, posY)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextSize = 13
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = content
 
-local closeAllBtn = Instance.new("TextButton")
-closeAllBtn.Size = UDim2.new(1, -20, 0, 30)
-closeAllBtn.Position = UDim2.new(0, 10, 0, 80)
-closeAllBtn.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
-closeAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeAllBtn.Text = "Скрыть всё меню"
-closeAllBtn.Font = Enum.Font.GothamBold
-closeAllBtn.TextSize = 13
-closeAllBtn.Parent = content
-Instance.new("UICorner", closeAllBtn).CornerRadius = UDim.new(0, 6)
+    local bar = Instance.new("Frame")
+    bar.Size = UDim2.new(1, -40, 0, 4)
+    bar.Position = UDim2.new(0, 10, 0, 20)
+    bar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    bar.Parent = lbl
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
+
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(value/200, 0, 1, 0) -- Пример заполнения
+    fill.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+    fill.Parent = bar
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+end
+
+-- Привязка элементов
+local cbEsp = createCheckbox("ESP Box", 40, true)
+local cbName = createCheckbox("Show Names", 70, true)
+createSlider("FOV", 100, 120)
+createSlider("Smooth", 130, 15)
+
+cbEsp.MouseButton1Click:Connect(function()
+    getgenv().ColinSettings.ESP_ENABLED = not getgenv().ColinSettings.ESP_ENABLED
+    cbEsp.BackgroundColor3 = getgenv().ColinSettings.ESP_ENABLED and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(30, 30, 30)
+end)
 
 -- Ватермарка "skeet 0.7"
 local watermark = Instance.new("TextLabel")
@@ -110,61 +166,31 @@ watermark.Text = "skeet 0.7"
 watermark.TextColor3 = Color3.fromRGB(255, 255, 255)
 watermark.Font = Enum.Font.Code
 watermark.TextSize = 14
-watermark.Visible = false -- Изначально скрыта
+watermark.Visible = false
 watermark.Parent = gui
 
--- Логика скрытия/разворота
-local isOpen = true
-local function toggleMenu()
-    isOpen = not isOpen
-    if isOpen then
-        mainFrame.Visible = true
-        watermark.Visible = false
-    else
-        mainFrame.Visible = false
-        watermark.Visible = true
-    end
-end
-
-hideBtn.MouseButton1Click:Connect(toggleMenu)
-
-closeAllBtn.MouseButton1Click:Connect(function()
+-- Логика скрытия
+closeBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = false
     watermark.Visible = true
-    StarterGui:SetCore("SendNotification", {Title="Colin", Text="Меню скрыто. Внизу осталась надпись skeet 0.7.", Duration=3})
-end)
-
-espBtn.MouseButton1Click:Connect(function()
-    getgenv().ColinSettings.ESP_ENABLED = not getgenv().ColinSettings.ESP_ENABLED
-    espBtn.Text = "ESP: " .. (getgenv().ColinSettings.ESP_ENABLED and "ВКЛ" or "ВЫКЛ")
-    espBtn.BackgroundColor3 = getgenv().ColinSettings.ESP_ENABLED and Color3.fromRGB(40, 150, 40) or Color3.fromRGB(150, 40, 40)
-end)
-
-aimBtn.MouseButton1Click:Connect(function()
-    getgenv().ColinSettings.AIMBOT_ENABLED = not getgenv().ColinSettings.AIMBOT_ENABLED
-    aimBtn.Text = "Aimbot: " .. (getgenv().ColinSettings.AIMBOT_ENABLED and "ВКЛ" or "ВЫКЛ")
-    aimBtn.BackgroundColor3 = getgenv().ColinSettings.AIMBOT_ENABLED and Color3.fromRGB(40, 150, 40) or Color3.fromRGB(150, 40, 40)
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.RightShift then
-        toggleMenu()
+        mainFrame.Visible = not mainFrame.Visible
+        watermark.Visible = not mainFrame.Visible
     end
 end)
 
+-- ESP и Aimbot (рисование)
 local ESP_Objects = {}
 local function createESP(player)
     if player == LocalPlayer then return end
     local box = Drawing.new("Square")
     box.Visible = false
-    box.Thickness = 1
-    box.Filled = false
     local name = Drawing.new("Text")
     name.Visible = false
-    name.Size = 14
-    name.Center = true
-    name.Outline = true
     ESP_Objects[player] = {Box = box, Name = name}
 end
 
@@ -208,6 +234,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- Aimbot
 RunService.RenderStepped:Connect(function()
     if not getgenv().ColinSettings.AIMBOT_ENABLED then return end
     local closest = nil
