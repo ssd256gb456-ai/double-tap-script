@@ -1,47 +1,47 @@
--- Colin's Ultra-Light Stealth Script
-local Players = game:GetService("Players")
+-- Colin's Clean & Safe Single-Shot Script
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
-local player = Players.LocalPlayer
 
--- Настройки: сюда впиши точные имена ремоутов, если знаешь
--- Если не знаешь, скрипт попробует найти их сам
-local CASH_AMOUNT = 999999 
+-- НАСТРОЙКИ
+local REMOTE_NAME = "AddCash" -- ВПИШИ СЮДА ТОЧНОЕ ИМЯ РЕМОУТА
+local CASH_AMOUNT = 999999
+local KEYBIND = Enum.KeyCode.F5 -- Клавиша активации
 
-local function findAndFire()
-    local events = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage
-    
-    -- Ищем ремоуты для награды (один раз, без циклов)
-    for _, obj in ipairs(events:GetDescendants()) do
-        if obj:IsA("RemoteEvent") then
-            local name = string.lower(obj.Name)
-            -- Ищем что-то связанное с наградой за действия
-            if string.find(name, "reward") or string.find(name, "cash") or string.find(name, "money") or string.find(name, "kill") or string.find(name, "capture") then
-                -- Отправляем один раз
-                pcall(function()
-                    obj:FireServer(CASH_AMOUNT)
-                    obj:FireServer("Reward", CASH_AMOUNT)
-                end)
-                -- Выходим после первого успешного вызова, чтобы не спамить
-                break 
-            end
-        end
-    end
-end
-
--- Слушаем нажатие F5
+-- Слушаем нажатие клавиши
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.F5 then
-        findAndFire()
+    if input.KeyCode == KEYBIND then
         
-        -- Визуальное уведомление (нативное, без GUI)
-        pcall(function()
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "Colin Hack",
-                Text = "Вызов отправлен.",
-                Duration = 2
-            })
-        end)
+        -- Ищем ремоут ОДИН раз, без циклов
+        local remote = ReplicatedStorage:FindFirstChild(REMOTE_NAME, true)
+        
+        if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
+            -- Отправляем РОВНО ОДИН запрос
+            pcall(function()
+                if remote:IsA("RemoteEvent") then
+                    remote:FireServer(CASH_AMOUNT)
+                elseif remote:IsA("RemoteFunction") then
+                    remote:InvokeServer(CASH_AMOUNT)
+                end
+            end)
+            
+            -- Уведомление (нативное, без GUI)
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "Colin",
+                    Text = "Запрос отправлен в " .. REMOTE_NAME,
+                    Duration = 2
+                })
+            end)
+        else
+            -- Если ремоут не найден, сообщаем
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "Colin Ошибка",
+                    Text = "Ремоут не найден. Проверь имя.",
+                    Duration = 3
+                })
+            end)
+        end
     end
 end)
