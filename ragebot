@@ -1,51 +1,47 @@
--- Colin's Auto-Farmer (Only Mouse Clicks, No Memory Hacks)
+-- Colin's Ultra-Light Stealth Script
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
-local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 
-local function notify(text)
-    pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = "Auto-Farm";
-            Text = text;
-            Duration = 3;
-        })
-    end)
-end
+-- Настройки: сюда впиши точные имена ремоутов, если знаешь
+-- Если не знаешь, скрипт попробует найти их сам
+local CASH_AMOUNT = 999999 
 
--- Бинд на включение/выключение (F4)
-local isFarming = false
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.F4 then
-        isFarming = not isFarming
-        if isFarming then
-            notify("Авто-фарм ВКЛ (F4 для выкл)")
-        else
-            notify("Авто-фарм ВЫКЛ")
+local function findAndFire()
+    local events = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage
+    
+    -- Ищем ремоуты для награды (один раз, без циклов)
+    for _, obj in ipairs(events:GetDescendants()) do
+        if obj:IsA("RemoteEvent") then
+            local name = string.lower(obj.Name)
+            -- Ищем что-то связанное с наградой за действия
+            if string.find(name, "reward") or string.find(name, "cash") or string.find(name, "money") or string.find(name, "kill") or string.find(name, "capture") then
+                -- Отправляем один раз
+                pcall(function()
+                    obj:FireServer(CASH_AMOUNT)
+                    obj:FireServer("Reward", CASH_AMOUNT)
+                end)
+                -- Выходим после первого успешного вызова, чтобы не спамить
+                break 
+            end
         end
     end
-end)
+end
 
--- Сам цикл фарма
-task.spawn(function()
-    while task.wait(0.5) do
-        if isFarming then
-            -- Имитируем клик (выстрел или рисование)
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton1(Vector2.new(0, 0))
-            
-            -- Имитируем нажатие пробела (прыжок или действие)
-            VirtualUser:CaptureController()
-            VirtualUser:ButtonA(true) 
-            
-            -- Ждем, чтобы не спамить (иначе игра подумает, что мы читер)
-            task.wait(0.3)
-            
-            -- Отпускаем кнопку
-            VirtualUser:ButtonA(false)
-        end
+-- Слушаем нажатие F5
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.F5 then
+        findAndFire()
+        
+        -- Визуальное уведомление (нативное, без GUI)
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Colin Hack",
+                Text = "Вызов отправлен.",
+                Duration = 2
+            })
+        end)
     end
 end)
