@@ -1,4 +1,4 @@
--- Colin's Fixed Visual Check
+-- Colin's Lightweight ESP (No Crashes)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -13,12 +13,8 @@ end
 
 getgenv().ColinSettings = {
     ESP_ENABLED = true,
-    AIMBOT_ENABLED = false,
-    AIM_FOV = 120,
-    AIM_SMOOTH = 0.15,
-    TEAM_CHECK = true,
-    RECOIL_CONTROL = true,
-    VISUAL_CHECK = true
+    SHOW_HEALTH = true,
+    SHOW_NAMES = true
 }
 
 local gui = Instance.new("ScreenGui")
@@ -27,8 +23,8 @@ gui.ResetOnSpawn = false
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 500, 0, 350)
-mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+mainFrame.Size = UDim2.new(0, 400, 0, 250)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -125)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 1
 mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
@@ -41,21 +37,6 @@ sideBar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 sideBar.BorderSizePixel = 0
 sideBar.Parent = mainFrame
 Instance.new("UIStroke", sideBar).Color = Color3.fromRGB(40, 40, 40)
-
-local tabs = {"Aimbot", "Visuals", "Misc", "Settings"}
-local currentTab = "Visuals"
-
-for i, tab in ipairs(tabs) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 50)
-    btn.Position = UDim2.new(0, 0, 0, (i-1)*50)
-    btn.BackgroundColor3 = (tab == currentTab) and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(10, 10, 10)
-    btn.Text = string.sub(tab, 1, 1)
-    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 16
-    btn.Parent = sideBar
-end
 
 local content = Instance.new("Frame")
 content.Size = UDim2.new(1, -50, 1, 0)
@@ -71,7 +52,7 @@ titleBar.Parent = content
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 1, 0)
 title.BackgroundTransparency = 1
-title.Text = "Visuals & Aimbot"
+title.Text = "Visuals"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
@@ -87,7 +68,20 @@ closeBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.Parent = titleBar
 
-local function createCheckbox(text, posY, defaultState, settingName)
+local pages = {}
+local currentPage = "Visuals"
+local function createPage(name)
+    local page = Instance.new("Frame")
+    page.Size = UDim2.new(1, 0, 1, -30)
+    page.Position = UDim2.new(0, 0, 0, 30)
+    page.BackgroundTransparency = 1
+    page.Visible = (name == currentPage)
+    page.Parent = content
+    pages[name] = page
+end
+createPage("Visuals")
+
+local function createCheckbox(parent, text, posY, defaultState, settingName)
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, -20, 0, 20)
     lbl.Position = UDim2.new(0, 10, 0, posY)
@@ -95,9 +89,9 @@ local function createCheckbox(text, posY, defaultState, settingName)
     lbl.Text = text
     lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
     lbl.Font = Enum.Font.Gotham
-    lbl.TextSize = 13
+    lbl.TextSize = 14
     lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = content
+    lbl.Parent = parent
 
     local cb = Instance.new("TextButton")
     cb.Size = UDim2.new(0, 15, 0, 15)
@@ -113,73 +107,20 @@ local function createCheckbox(text, posY, defaultState, settingName)
     end)
 end
 
-local function createSlider(text, posY, minVal, maxVal, defaultVal, settingName, isFloat)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -20, 0, 20)
-    lbl.Position = UDim2.new(0, 10, 0, posY)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text .. ": " .. tostring(defaultVal)
-    lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-    lbl.Font = Enum.Font.Gotham
-    lbl.TextSize = 13
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = content
+createCheckbox(pages["Visuals"], "ESP Box", 10, true, "ESP_ENABLED")
+createCheckbox(pages["Visuals"], "Show Health Bar", 40, true, "SHOW_HEALTH")
+createCheckbox(pages["Visuals"], "Show Names", 70, true, "SHOW_NAMES")
 
-    local bar = Instance.new("Frame")
-    bar.Size = UDim2.new(1, -40, 0, 4)
-    bar.Position = UDim2.new(0, 10, 0, 20)
-    bar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    bar.Parent = lbl
-    Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
-
-    local fill = Instance.new("Frame")
-    local initialPercent = (defaultVal - minVal) / (maxVal - minVal)
-    fill.Size = UDim2.new(initialPercent, 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
-    fill.Parent = bar
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
-
-    bar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            local function updateSlider(input)
-                local mouseX = input.Position.X
-                local barAbsolutePos = bar.AbsolutePosition.X
-                local barSize = bar.AbsoluteSize.X
-                local percent = math.clamp((mouseX - barAbsolutePos) / barSize, 0, 1)
-                
-                fill.Size = UDim2.new(percent, 0, 1, 0)
-                
-                local val = minVal + (maxVal - minVal) * percent
-                if not isFloat then val = math.floor(val) end
-                
-                lbl.Text = text .. ": " .. tostring(val)
-                getgenv().ColinSettings[settingName] = val
-            end
-            
-            updateSlider(input)
-            
-            local connection
-            connection = UserInputService.InputChanged:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseMovement then
-                    updateSlider(input)
-                end
-            end)
-            
-            UserInputService.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    if connection then connection:Disconnect() end
-                end
-            end)
-        end
-    end)
-end
-
-createCheckbox("ESP Box", 40, true, "ESP_ENABLED")
-createCheckbox("Aimbot Enable", 70, false, "AIMBOT_ENABLED")
-createCheckbox("Visual Check", 100, true, "VISUAL_CHECK")
-createCheckbox("Recoil Control", 130, true, "RECOIL_CONTROL")
-createSlider("FOV", 160, 10, 360, 120, "AIM_FOV", false)
-createSlider("Smooth", 190, 0.01, 1, 0.15, "AIM_SMOOTH", true)
+-- Табы
+local tabBtn = Instance.new("TextButton")
+tabBtn.Size = UDim2.new(1, 0, 0, 50)
+tabBtn.Position = UDim2.new(0, 0, 0, 0)
+tabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+tabBtn.Text = "V"
+tabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+tabBtn.Font = Enum.Font.GothamBold
+tabBtn.TextSize = 18
+tabBtn.Parent = sideBar
 
 local watermark = Instance.new("TextLabel")
 watermark.Size = UDim2.new(0, 100, 0, 20)
@@ -210,9 +151,17 @@ local function createESP(player)
     if player == LocalPlayer then return end
     local box = Drawing.new("Square")
     box.Visible = false
+    box.Thickness = 1
     local name = Drawing.new("Text")
     name.Visible = false
-    ESP_Objects[player] = {Box = box, Name = name}
+    name.Size = 16
+    name.Center = true
+    name.Outline = true
+    local healthBar = Drawing.new("Square")
+    healthBar.Visible = false
+    healthBar.Thickness = 1
+    healthBar.Filled = true
+    ESP_Objects[player] = {Box = box, Name = name, Health = healthBar}
 end
 
 for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
@@ -221,6 +170,7 @@ Players.PlayerRemoving:Connect(function(p)
     if ESP_Objects[p] then
         ESP_Objects[p].Box:Remove()
         ESP_Objects[p].Name:Remove()
+        ESP_Objects[p].Health:Remove()
         ESP_Objects[p] = nil
     end
 end)
@@ -230,89 +180,47 @@ RunService.RenderStepped:Connect(function()
         if getgenv().ColinSettings.ESP_ENABLED and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("HumanoidRootPart") then
             local head = player.Character.Head
             local root = player.Character.HumanoidRootPart
+            local hum = player.Character:FindFirstChildOfClass("Humanoid")
+            
             local headScreen, onScreen = Camera:WorldToViewportPoint(head.Position)
             local rootScreen, _ = Camera:WorldToViewportPoint(root.Position)
             
             if onScreen then
                 local height = math.abs(headScreen.Y - rootScreen.Y) * 2
                 local width = height / 2
+                
                 esp.Box.Size = Vector2.new(width, height)
                 esp.Box.Position = Vector2.new(headScreen.X - width/2, headScreen.Y - height/4)
                 esp.Box.Visible = true
                 esp.Box.Color = (player.Team == LocalPlayer.Team) and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
                 
-                esp.Name.Text = player.Name
-                esp.Name.Position = Vector2.new(headScreen.X, headScreen.Y - 20)
-                esp.Name.Visible = true
+                if getgenv().ColinSettings.SHOW_NAMES then
+                    esp.Name.Text = player.Name
+                    esp.Name.Position = Vector2.new(headScreen.X, headScreen.Y - 25)
+                    esp.Name.Visible = true
+                else
+                    esp.Name.Visible = false
+                end
+                
+                if getgenv().ColinSettings.SHOW_HEALTH and hum then
+                    local hpPercent = hum.Health / hum.MaxHealth
+                    local hpHeight = height * hpPercent
+                    esp.Health.Size = Vector2.new(2, hpHeight)
+                    esp.Health.Position = Vector2.new(headScreen.X + width/2 + 4, headScreen.Y - height/4 + (height - hpHeight))
+                    esp.Health.Color = Color3.fromRGB(0, 255, 0):Lerp(Color3.fromRGB(255, 0, 0), 1 - hpPercent)
+                    esp.Health.Visible = true
+                else
+                    esp.Health.Visible = false
+                end
             else
                 esp.Box.Visible = false
                 esp.Name.Visible = false
+                esp.Health.Visible = false
             end
         else
             esp.Box.Visible = false
             esp.Name.Visible = false
+            esp.Health.Visible = false
         end
-    end
-end)
-
--- Исправленный Визуальный Аимбот
-RunService.RenderStepped:Connect(function()
-    if not getgenv().ColinSettings.AIMBOT_ENABLED then return end
-    local closest = nil
-    local shortestDistance = getgenv().ColinSettings.AIM_FOV
-    local mousePos = UserInputService:GetMouseLocation()
-
-    -- Таблица для исключения (наши персонажи, эффекты и т.д.)
-    local ignoreList = {LocalPlayer.Character, Camera}
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChildOfClass("Humanoid") and player.Character.Humanoid.Health > 0 then
-            if getgenv().ColinSettings.TEAM_CHECK and player.Team == LocalPlayer.Team then continue end
-            
-            local head = player.Character.Head
-            local headScreen, onScreen = Camera:WorldToViewportPoint(head.Position)
-            
-            if onScreen then
-                local isVisible = true
-                if getgenv().ColinSettings.VISUAL_CHECK then
-                    local rayParams = RaycastParams.new()
-                    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                    -- Исключаем ТОЛЬКО своего персонажа. Части врага НЕ исключаем, чтобы луч попал в него, если он открыт.
-                    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-                    
-                    local ray = workspace:Raycast(Camera.CFrame.Position, (head.Position - Camera.CFrame.Position), rayParams)
-                    
-                    -- Если луч попал НЕ в голову/часть врага, а во что-то другое (стену) - значит, он за стеной
-                    if ray and not ray.Instance:IsDescendantOf(player.Character) then
-                        isVisible = false 
-                    end
-                end
-                
-                if isVisible then
-                    local distance = (Vector2.new(headScreen.X, headScreen.Y) - mousePos).Magnitude
-                    if distance < shortestDistance then
-                        shortestDistance = distance
-                        closest = head
-                    end
-                end
-            end
-        end
-    end
-
-    if closest and mousemoverel then
-        local targetPos = Camera:WorldToViewportPoint(closest.Position)
-        local newMousePos = Vector2.new(targetPos.X, targetPos.Y)
-        local delta = (newMousePos - mousePos) * getgenv().ColinSettings.AIM_SMOOTH
-        mousemoverel(delta.X, delta.Y)
-    end
-end)
-
--- Recoil Control
-RunService.RenderStepped:Connect(function()
-    if not getgenv().ColinSettings.RECOIL_CONTROL then return end
-    if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-        local recoilAmount = 0.05
-        local newCFrame = Camera.CFrame * CFrame.Angles(math.rad(recoilAmount), 0, 0)
-        Camera.CFrame = Camera.CFrame:Lerp(newCFrame, 0.1)
     end
 end)
