@@ -1,4 +1,4 @@
--- Colin's Fully Working Sliders & UI
+-- Colin's Fixed Visual Check
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -113,7 +113,6 @@ local function createCheckbox(text, posY, defaultState, settingName)
     end)
 end
 
--- РАБОЧИЙ ПОЛЗУНОК
 local function createSlider(text, posY, minVal, maxVal, defaultVal, settingName, isFloat)
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, -20, 0, 20)
@@ -140,7 +139,6 @@ local function createSlider(text, posY, minVal, maxVal, defaultVal, settingName,
     fill.Parent = bar
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 
-    -- Слушаем клик и перетаскивание
     bar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             local function updateSlider(input)
@@ -207,7 +205,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- ESP
 local ESP_Objects = {}
 local function createESP(player)
     if player == LocalPlayer then return end
@@ -258,12 +255,15 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Визуальный Аимбот
+-- Исправленный Визуальный Аимбот
 RunService.RenderStepped:Connect(function()
     if not getgenv().ColinSettings.AIMBOT_ENABLED then return end
     local closest = nil
     local shortestDistance = getgenv().ColinSettings.AIM_FOV
     local mousePos = UserInputService:GetMouseLocation()
+
+    -- Таблица для исключения (наши персонажи, эффекты и т.д.)
+    local ignoreList = {LocalPlayer.Character, Camera}
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChildOfClass("Humanoid") and player.Character.Humanoid.Health > 0 then
@@ -277,10 +277,14 @@ RunService.RenderStepped:Connect(function()
                 if getgenv().ColinSettings.VISUAL_CHECK then
                     local rayParams = RaycastParams.new()
                     rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, player.Character}
+                    -- Исключаем ТОЛЬКО своего персонажа. Части врага НЕ исключаем, чтобы луч попал в него, если он открыт.
+                    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+                    
                     local ray = workspace:Raycast(Camera.CFrame.Position, (head.Position - Camera.CFrame.Position), rayParams)
-                    if ray then
-                        isVisible = false
+                    
+                    -- Если луч попал НЕ в голову/часть врага, а во что-то другое (стену) - значит, он за стеной
+                    if ray and not ray.Instance:IsDescendantOf(player.Character) then
+                        isVisible = false 
                     end
                 end
                 
@@ -306,7 +310,6 @@ end)
 -- Recoil Control
 RunService.RenderStepped:Connect(function()
     if not getgenv().ColinSettings.RECOIL_CONTROL then return end
-    
     if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
         local recoilAmount = 0.05
         local newCFrame = Camera.CFrame * CFrame.Angles(math.rad(recoilAmount), 0, 0)
