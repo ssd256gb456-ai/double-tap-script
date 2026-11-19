@@ -1,6 +1,5 @@
--- Colin's Stealth Action Spoofer (Kill/Spray/Capture)
+-- Colin's Local Memory Changer (No Crashes, No Remotes)
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 
@@ -18,79 +17,46 @@ player.Chatted:Connect(function(msg)
     local args = string.split(msg, " ")
     local cmd = string.lower(args[1])
 
-    -- Команда для убийства (фейковая награда)
-    if cmd == "/kill" then
-        notify("Поиск ремоутов на убийство...")
-        local targetName = args[2]
+    if cmd == "/setcash" then
+        local amount = tonumber(args[2])
+        if not amount then notify("Введи число!") return end
         
-        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local n = string.lower(obj.Name)
-                if string.find(n, "kill") or string.find(n, "death") or string.find(n, "damage") or string.find(n, "reward") then
-                    pcall(function()
-                        if obj:IsA("RemoteEvent") then
-                            -- Шлем имя жертвы и фейковый урон
-                            obj:FireServer(targetName or "Player1", 9999)
-                            obj:FireServer(9999) -- На случай, если сервер ждет просто урон
-                        elseif obj:IsA("RemoteFunction") then
-                            obj:InvokeServer(targetName or "Player1", 9999)
-                        end
-                    end)
-                    task.wait(0.5)
-                end
-            end
-        end
-        notify("Убийство отправлено.")
-    end
+        notify("Пытаюсь изменить локальный баланс...")
+        local successCount = 0
 
-    -- Команда для граффити
-    if cmd == "/spray" then
-        notify("Поиск ремоутов на граффити...")
-        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local n = string.lower(obj.Name)
-                if string.find(n, "spray") or string.find(n, "paint") or string.find(n, "graffiti") or string.find(n, "draw") then
-                    pcall(function()
-                        if obj:IsA("RemoteEvent") then
-                            -- Шлем фейковые координаты (центр карты) и ID цвета
-                            obj:FireServer(Vector3.new(0, 0, 0), 1)
-                            obj:FireServer("Spray", 1)
-                        elseif obj:IsA("RemoteFunction") then
-                            obj:InvokeServer(Vector3.new(0, 0, 0), 1)
-                        end
-                    end)
-                    task.wait(0.5)
+        -- Пытаемся найти объекты, в которых хранятся деньги (например, папка Player или Character)
+        local function searchAndReplace(obj)
+            for _, child in ipairs(obj:GetChildren()) do
+                -- Если это ValueBase (IntValue, NumberValue), меняем значение
+                if child:IsA("IntValue") or child:IsA("NumberValue") or child:IsA("StringValue") then
+                    local name = string.lower(child.Name)
+                    if string.find(name, "cash") or string.find(name, "coin") or string.find(name, "money") or string.find(name, "balance") then
+                        pcall(function()
+                            if child:IsA("StringValue") then
+                                child.Value = tostring(amount)
+                            else
+                                child.Value = amount
+                            end
+                            successCount = successCount + 1
+                        end)
+                    end
+                end
+                -- Рекурсивно идем глубже
+                if #child:GetChildren() > 0 then
+                    searchAndReplace(child)
                 end
             end
         end
-        notify("Граффити отправлено.")
-    end
 
-    -- Команда для захвата
-    if cmd == "/capture" then
-        notify("Поиск ремоутов на захват...")
-        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local n = string.lower(obj.Name)
-                if string.find(n, "capture") or string.find(n, "point") or string.find(n, "zone") or string.find(n, "territory") then
-                    pcall(function()
-                        if obj:IsA("RemoteEvent") then
-                            -- Шлем ID точки (1, 2, 3...) и фейковый статус
-                            obj:FireServer(1, true)
-                            obj:FireServer("Capture", true)
-                        elseif obj:IsA("RemoteFunction") then
-                            obj:InvokeServer(1, true)
-                        end
-                    end)
-                    task.wait(0.5)
-                end
-            end
+        -- Ищем в самом игроке, в его персонаже и в ReplicatedStorage
+        searchAndReplace(player)
+        if player.Character then searchAndReplace(player.Character) end
+        searchAndReplace(game:GetService("ReplicatedStorage"))
+
+        if successCount > 0 then
+            notify("Изменено " .. successCount .. " переменных. Проверь баланс (визуально).")
+        else
+            notify("Деньги хранятся на сервере. Локально не найдено.")
         end
-        notify("Захват отправлен.")
-    end
-    
-    -- Инфо
-    if cmd == "/hackhelp" then
-        notify("Команды: /kill [ник], /spray, /capture")
     end
 end)
