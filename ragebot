@@ -1,4 +1,4 @@
--- Colin's Lightweight ESP (No Crashes)
+-- Colin's Restored ESP & Aimbot with Keybind & Better Boxes
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -13,8 +13,12 @@ end
 
 getgenv().ColinSettings = {
     ESP_ENABLED = true,
+    AIMBOT_ENABLED = true,
+    AIM_FOV = 120,
+    AIM_SMOOTH = 0.15,
     SHOW_HEALTH = true,
-    SHOW_NAMES = true
+    SHOW_NAMES = true,
+    MENU_KEY = Enum.KeyCode.RightShift
 }
 
 local gui = Instance.new("ScreenGui")
@@ -23,8 +27,8 @@ gui.ResetOnSpawn = false
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 400, 0, 250)
-mainFrame.Position = UDim2.new(0.5, -200, 0.5, -125)
+mainFrame.Size = UDim2.new(0, 400, 0, 270)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -135)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 1
 mainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
@@ -80,6 +84,8 @@ local function createPage(name)
     pages[name] = page
 end
 createPage("Visuals")
+createPage("Aimbot")
+createPage("Settings")
 
 local function createCheckbox(parent, text, posY, defaultState, settingName)
     local lbl = Instance.new("TextLabel")
@@ -107,20 +113,112 @@ local function createCheckbox(parent, text, posY, defaultState, settingName)
     end)
 end
 
+local function createSlider(parent, text, posY, minVal, maxVal, defaultVal, settingName, isFloat)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -20, 0, 20)
+    lbl.Position = UDim2.new(0, 10, 0, posY)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text .. ": " .. tostring(defaultVal)
+    lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextSize = 14
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = parent
+
+    local bar = Instance.new("Frame")
+    bar.Size = UDim2.new(1, -40, 0, 4)
+    bar.Position = UDim2.new(0, 10, 0, 20)
+    bar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    bar.Parent = lbl
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
+
+    local fill = Instance.new("Frame")
+    local initialPercent = (defaultVal - minVal) / (maxVal - minVal)
+    fill.Size = UDim2.new(initialPercent, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+    fill.Parent = bar
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+    bar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local function updateSlider(input)
+                local mouseX = input.Position.X
+                local barAbsolutePos = bar.AbsolutePosition.X
+                local barSize = bar.AbsoluteSize.X
+                local percent = math.clamp((mouseX - barAbsolutePos) / barSize, 0, 1)
+                fill.Size = UDim2.new(percent, 0, 1, 0)
+                local val = minVal + (maxVal - minVal) * percent
+                if not isFloat then val = math.floor(val) end
+                lbl.Text = text .. ": " .. tostring(val)
+                getgenv().ColinSettings[settingName] = val
+            end
+            updateSlider(input)
+            local connection
+            connection = UserInputService.InputChanged:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseMovement then updateSlider(input) end
+            end)
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if connection then connection:Disconnect() end
+                end
+            end)
+        end
+    end)
+end
+
 createCheckbox(pages["Visuals"], "ESP Box", 10, true, "ESP_ENABLED")
 createCheckbox(pages["Visuals"], "Show Health Bar", 40, true, "SHOW_HEALTH")
 createCheckbox(pages["Visuals"], "Show Names", 70, true, "SHOW_NAMES")
 
--- Табы
-local tabBtn = Instance.new("TextButton")
-tabBtn.Size = UDim2.new(1, 0, 0, 50)
-tabBtn.Position = UDim2.new(0, 0, 0, 0)
-tabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-tabBtn.Text = "V"
-tabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-tabBtn.Font = Enum.Font.GothamBold
-tabBtn.TextSize = 18
-tabBtn.Parent = sideBar
+createCheckbox(pages["Aimbot"], "Aimbot Enable", 10, true, "AIMBOT_ENABLED")
+createSlider(pages["Aimbot"], "FOV", 40, 10, 360, 120, "AIM_FOV", false)
+createSlider(pages["Aimbot"], "Smooth", 70, 0.01, 1, 0.15, "AIM_SMOOTH", true)
+
+-- Кнопка смены бинда
+local bindBtn = Instance.new("TextButton")
+bindBtn.Size = UDim2.new(1, -20, 0, 30)
+bindBtn.Position = UDim2.new(0, 10, 0, 10)
+bindBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+bindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+bindBtn.Text = "Сменить бинд (RightShift)"
+bindBtn.Font = Enum.Font.Gotham
+bindBtn.TextSize = 13
+bindBtn.Parent = pages["Settings"]
+Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 6)
+
+local keys = {Enum.KeyCode.RightShift, Enum.KeyCode.RightControl, Enum.KeyCode.Insert}
+local keyNames = {"RightShift", "RightControl", "Insert"}
+local keyIndex = 1
+
+bindBtn.MouseButton1Click:Connect(function()
+    keyIndex = keyIndex + 1
+    if keyIndex > #keys then keyIndex = 1 end
+    getgenv().ColinSettings.MENU_KEY = keys[keyIndex]
+    bindBtn.Text = "Сменить бинд (" .. keyNames[keyIndex] .. ")"
+end)
+
+-- Логика табов
+local tabButtons = {}
+local tabs = {"Visuals", "Aimbot", "Settings"}
+for i, tab in ipairs(tabs) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 50)
+    btn.Position = UDim2.new(0, 0, 0, (i-1)*50)
+    btn.BackgroundColor3 = (tab == currentPage) and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(10, 10, 10)
+    btn.Text = string.sub(tab, 1, 1)
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 18
+    btn.Parent = sideBar
+    
+    btn.MouseButton1Click:Connect(function()
+        for pName, pFrame in pairs(pages) do pFrame.Visible = (pName == tab) end
+        title.Text = tab
+        for _, b in pairs(tabButtons) do b.BackgroundColor3 = Color3.fromRGB(10, 10, 10) end
+        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    end)
+    table.insert(tabButtons, btn)
+end
 
 local watermark = Instance.new("TextLabel")
 watermark.Size = UDim2.new(0, 100, 0, 20)
@@ -140,7 +238,7 @@ end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.RightShift then
+    if input.KeyCode == getgenv().ColinSettings.MENU_KEY then
         mainFrame.Visible = not mainFrame.Visible
         watermark.Visible = not mainFrame.Visible
     end
@@ -151,7 +249,7 @@ local function createESP(player)
     if player == LocalPlayer then return end
     local box = Drawing.new("Square")
     box.Visible = false
-    box.Thickness = 1
+    box.Thickness = 2
     local name = Drawing.new("Text")
     name.Visible = false
     name.Size = 16
@@ -186,17 +284,18 @@ RunService.RenderStepped:Connect(function()
             local rootScreen, _ = Camera:WorldToViewportPoint(root.Position)
             
             if onScreen then
-                local height = math.abs(headScreen.Y - rootScreen.Y) * 2
-                local width = height / 2
+                -- Увеличенный и ровный бокс
+                local height = math.abs(headScreen.Y - rootScreen.Y) * 2.2
+                local width = height / 1.8
                 
                 esp.Box.Size = Vector2.new(width, height)
-                esp.Box.Position = Vector2.new(headScreen.X - width/2, headScreen.Y - height/4)
+                esp.Box.Position = Vector2.new(headScreen.X - width/2, headScreen.Y - height/6)
                 esp.Box.Visible = true
                 esp.Box.Color = (player.Team == LocalPlayer.Team) and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
                 
                 if getgenv().ColinSettings.SHOW_NAMES then
                     esp.Name.Text = player.Name
-                    esp.Name.Position = Vector2.new(headScreen.X, headScreen.Y - 25)
+                    esp.Name.Position = Vector2.new(headScreen.X, headScreen.Y - 35)
                     esp.Name.Visible = true
                 else
                     esp.Name.Visible = false
@@ -206,7 +305,7 @@ RunService.RenderStepped:Connect(function()
                     local hpPercent = hum.Health / hum.MaxHealth
                     local hpHeight = height * hpPercent
                     esp.Health.Size = Vector2.new(2, hpHeight)
-                    esp.Health.Position = Vector2.new(headScreen.X + width/2 + 4, headScreen.Y - height/4 + (height - hpHeight))
+                    esp.Health.Position = Vector2.new(headScreen.X + width/2 + 6, headScreen.Y - height/6 + (height - hpHeight))
                     esp.Health.Color = Color3.fromRGB(0, 255, 0):Lerp(Color3.fromRGB(255, 0, 0), 1 - hpPercent)
                     esp.Health.Visible = true
                 else
@@ -222,5 +321,35 @@ RunService.RenderStepped:Connect(function()
             esp.Name.Visible = false
             esp.Health.Visible = false
         end
+    end
+end)
+
+-- Аимбот
+RunService.RenderStepped:Connect(function()
+    if not getgenv().ColinSettings.AIMBOT_ENABLED then return end
+    local closest = nil
+    local shortestDistance = getgenv().ColinSettings.AIM_FOV
+    local mousePos = UserInputService:GetMouseLocation()
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChildOfClass("Humanoid") and player.Character.Humanoid.Health > 0 then
+            local head = player.Character.Head
+            local headScreen, onScreen = Camera:WorldToViewportPoint(head.Position)
+            
+            if onScreen then
+                local distance = (Vector2.new(headScreen.X, headScreen.Y) - mousePos).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    closest = head
+                end
+            end
+        end
+    end
+
+    if closest and mousemoverel then
+        local targetPos = Camera:WorldToViewportPoint(closest.Position)
+        local newMousePos = Vector2.new(targetPos.X, targetPos.Y)
+        local delta = (newMousePos - mousePos) * getgenv().ColinSettings.AIM_SMOOTH
+        mousemoverel(delta.X, delta.Y)
     end
 end)
