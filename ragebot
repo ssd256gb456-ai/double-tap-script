@@ -1,40 +1,143 @@
--- Colin's RP Money Farmer (Safe VirtualUser Version)
+-- Colin's ESP, Legit Aimbot & GUI
 local Players = game:GetService("Players")
-local VirtualUser = game:GetService("VirtualUser")
-local StarterGui = game:GetService("StarterGui")
-local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
 
 -- Настройки
-local DELAY = 2 -- Задержка между действиями (в секундах)
-local USE_KEY_E = true -- Если на работе нужно нажимать E, оставь true. Если кликать мышкой - false.
+local ESP_ENABLED = true
+local AIMBOT_ENABLED = false
+local AIM_FOV = 100
+local AIM_SMOOTH = 0.15
+local TEAM_CHECK = true -- Игнорировать своих
 
-local function notify(text)
-    pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = "AutoFarm";
-            Text = text;
-            Duration = 3
-        })
-    end)
+-- Проверка на Drawing API
+if not Drawing then
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title="Colin", Text="Твой инжектор не поддерживает Drawing API. Чит не запустится.", Duration=5})
+    return
 end
 
-notify("Автофарм денег запущен. Встань на рабочую точку!")
+-- Таблица для хранения ESP
+local ESP_Objects = {}
 
--- Запускаем цикл
-task.spawn(function()
-    while task.wait(DELAY) do
-        pcall(function()
-            if USE_KEY_E then
-                -- Имитация нажатия клавиши E (взаимодействие)
-                VirtualUser:CaptureController()
-                VirtualUser:ButtonE(true)
-                task.wait(0.1)
-                VirtualUser:ButtonE(false)
-            else
-                -- Имитация клика мышью
-                VirtualUser:CaptureController()
-                VirtualUser:ClickButton1(Vector2.new(0, 0))
+-- Функция создания ESP для игрока
+local function createESP(player)
+    if player == LocalPlayer then return end
+    
+    local box = Drawing.new("Square")
+    box.Visible = false
+    box.Color = Color3.fromRGB(255, 0, 0)
+    box.Thickness = 1
+    box.Filled = false
+
+    local name = Drawing.new("Text")
+    name.Visible = false
+    name.Color = Color3.fromRGB(255, 255, 255)
+    name.Size = 14
+    name.Center = true
+    name.Outline = true
+
+    ESP_Objects[player] = {Box = box, Name = name}
+end
+
+-- Удаление ESP
+local function removeESP(player)
+    if ESP_Objects[player] then
+        ESP_Objects[player].Box:Remove()
+        ESP_Objects[player].Name:Remove()
+        ESP_Objects[player] = nil
+    end
+end
+
+-- Инициализация ESP для всех
+for _, p in ipairs(Players:GetPlayers()) do
+    createESP(p)
+end
+Players.PlayerAdded:Connect(createESP)
+Players.PlayerRemoving:Connect(removeESP)
+
+-- Основной цикл отрисовки
+RunService.RenderStepped:Connect(function()
+    for player, esp in pairs(ESP_Objects) do
+        if ESP_ENABLED and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Head") then
+            local head = player.Character.Head
+            local root = player.Character.HumanoidRootPart
+            
+            -- Проверка на команду (если нужно)
+            if TEAM_CHECK and player.Team == LocalPlayer.Team then
+                esp.Box.Visible = false
+                esp.Name.Visible = false
+                continue
             end
-        end)
+
+            local headScreen, onScreen = Camera:WorldToViewportPoint(head.Position)
+            local rootScreen, _ = Camera:WorldToViewportPoint(root.Position)
+
+            if onScreen then
+                local height = math.abs(headScreen.Y - rootScreen.Y) * 2
+                local width = height / 2
+                
+                -- Рисуем бокс
+                esp.Box.Size = Vector2.new(width, height)
+                esp.Box.Position = Vector2.new(headScreen.X - width/2, headScreen.Y - height/4)
+                esp.Box.Visible = true
+                esp.Box.Color = (player.Team == LocalPlayer.Team) and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+
+                -- Рисуем ник
+                esp.Name.Text = player.Name
+                esp.Name.Position = Vector2.new(headScreen.X, headScreen.Y - 20)
+                esp.Name.Visible = true
+            else
+                esp.Box.Visible = false
+                esp.Name.Visible = false
+            end
+        else
+            esp.Box.Visible = false
+            esp.Name.Visible = false
+        end
+    end
+end)
+
+-- Легитный Аимбот
+RunService.RenderStepped:Connect(function()
+    if not AIMBOT_ENABLED then return end
+    
+    local closest = nil
+    local shortestDistance = AIM_FOV
+    local mousePos = UserInputService:GetMouseLocation()
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChildOfClass("Humanoid") and player.Character.Humanoid.Health > 0 then
+            if TEAM_CHECK and player.Team == LocalPlayer.Team then continue end
+            
+            local headScreen, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
+            if onScreen then
+                local distance = (Vector2.new(headScreen.X, headScreen.Y) - mousePos).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    closest = player.Character.Head
+                end
+            end
+        end
+    end
+
+    if closest then
+        -- Плавное наведение (Legit)
+        local targetPos = Camera:WorldToViewportPoint(closest.Position)
+        local newMousePos = Vector2.new(targetPos.X, targetPos.Y)
+        local delta = (newMousePos - mousePos) * AIM_SMOOTH
+        
+        -- Двигаем мышь
+        mousemoverel(delta.X, delta.Y)
+    end
+end)
+
+-- Обработка клавиш (Toggle)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        AIMBOT_ENABLED = not AIMBOT_ENABLED
+        game:GetService("StarterGui"):SetCore("SendNotification", {Title="Colin", Text="Aimbot: " .. tostring(AIMBOT_ENABLED), Duration=2})
     end
 end)
