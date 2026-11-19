@@ -1,4 +1,4 @@
--- Colin's Blind Remote Bomber & GUI
+-- Colin's Silent Remote Spoofer & Catcher
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
@@ -6,13 +6,13 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- 1. Создаем GUI
 local gui = Instance.new("ScreenGui")
-gui.Name = "ColinBlindBomber"
+gui.Name = "ColinSilentHack"
 gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 200)
-frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+frame.Size = UDim2.new(0, 320, 0, 240)
+frame.Position = UDim2.new(0.5, -160, 0.5, -120)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
 frame.Parent = gui
@@ -21,87 +21,122 @@ Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundTransparency = 1
-title.Text = "Слепой бомбер (Colin)"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Text = "Тихий перехватчик (Colin)"
+title.TextColor3 = Color3.fromRGB(255, 200, 0)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 16
 title.Parent = frame
 
--- Поле суммы
-local inputAmount = Instance.new("TextBox")
-inputAmount.Size = UDim2.new(1, -20, 0, 36)
-inputAmount.Position = UDim2.new(0, 10, 0, 40)
-inputAmount.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-inputAmount.TextColor3 = Color3.fromRGB(255, 255, 255)
-inputAmount.PlaceholderText = "Сумма (999999)"
-inputAmount.Text = "999999"
-inputAmount.Parent = frame
-Instance.new("UICorner", inputAmount).CornerRadius = UDim.new(0, 6)
-
--- Кнопка
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(1, -20, 0, 44)
-button.Position = UDim2.new(0, 10, 0, 85)
-button.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.Text = "Бомбить все ремоуты"
-button.Font = Enum.Font.GothamBold
-button.TextSize = 15
-button.Parent = frame
-Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
-
--- Статус
 local status = Instance.new("TextLabel")
-status.Size = UDim2.new(1, -20, 0, 50)
-status.Position = UDim2.new(0, 10, 0, 140)
+status.Size = UDim2.new(1, -20, 0, 40)
+status.Position = UDim2.new(0, 10, 0, 35)
 status.BackgroundTransparency = 1
 status.TextColor3 = Color3.fromRGB(180, 180, 180)
-status.Text = "Жди. Я пробью все ремоуты."
+status.Text = "Статус: Жду действия в игре (убей NPC, продай предмет)..."
 status.Font = Enum.Font.Gotham
 status.TextSize = 13
 status.TextWrapped = true
 status.Parent = frame
 
--- 2. Логика поиска и бомбежки
+-- Поле суммы
+local inputAmount = Instance.new("TextBox")
+inputAmount.Size = UDim2.new(1, -20, 0, 36)
+inputAmount.Position = UDim2.new(0, 10, 0, 80)
+inputAmount.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+inputAmount.TextColor3 = Color3.fromRGB(255, 255, 255)
+inputAmount.PlaceholderText = "Желаемая сумма"
+inputAmount.Text = "100000"
+inputAmount.Parent = frame
+Instance.new("UICorner", inputAmount).CornerRadius = UDim.new(0, 6)
+
+-- Кнопка спама (только если перехватили)
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, -20, 0, 44)
+button.Position = UDim2.new(0, 10, 0, 125)
+button.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Изначально неактивна
+button.TextColor3 = Color3.fromRGB(150, 150, 150)
+button.Text = "Ожидание перехвата..."
+button.Font = Enum.Font.GothamBold
+button.TextSize = 15
+button.Parent = frame
+Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
+
+local logOutput = Instance.new("TextLabel")
+logOutput.Size = UDim2.new(1, -20, 0, 40)
+logOutput.Position = UDim2.new(0, 10, 0, 180)
+logOutput.BackgroundTransparency = 1
+logOutput.TextColor3 = Color3.fromRGB(255, 100, 100)
+logOutput.Text = "Нажми на кнопку после того, как статус изменится."
+logOutput.Font = Enum.Font.Code
+logOutput.TextSize = 12
+logOutput.TextWrapped = true
+logOutput.Parent = frame
+
+-- 2. Настройка перехватчика (Hook)
+local capturedRemote = nil
+local capturedArgs = nil
+
+if hookfunction then
+    local oldFire = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
+        local args = {...}
+        -- Если мы уже нашли ремоут, не перехватываем дальше
+        if not capturedRemote then
+            -- Пытаемся найти что-то похожее на награду (число в аргументах)
+            for _, arg in ipairs(args) do
+                if type(arg) == "number" then
+                    capturedRemote = self
+                    capturedArgs = args
+                    
+                    -- Обновляем UI
+                    status.Text = "Перехвачено: " .. self.Name
+                    button.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+                    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    button.Text = "Отправить накрутку"
+                    logOutput.Text = "Ремоут: " .. self.Name .. " | Аргументы: " .. tostring(arg)
+                    break
+                end
+            end
+        end
+        return oldFire(self, ...)
+    end)
+else
+    status.Text = "Ошибка: твой executor не поддерживает hookfunction."
+end
+
+-- 3. Логика отправки
 button.MouseButton1Click:Connect(function()
-    local amount = tonumber(inputAmount.Text)
-    if not amount then
-        status.Text = "Ошибка: введи число!"
+    if not capturedRemote then
+        status.Text = "Сначала сделай действие в игре, чтобы я перехватил вызов!"
         return
     end
 
-    status.Text = "Поиск ремоутов и отправка..."
-    
-    local count = 0
-    local hitLog = {}
+    local amount = tonumber(inputAmount.Text)
+    if not amount then
+        status.Text = "Введи число!"
+        return
+    end
 
-    -- Ищем все ремоуты во всей игре (включая ReplicatedStorage и Workspace)
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj:IsA("RemoteEvent") then
-            -- Пытаемся отправить сумму
-            pcall(function()
-                obj:FireServer(amount)
-                -- На всякий случай шлем еще и таблицу (некоторые игры ждут таблицу)
-                obj:FireServer("currency", amount)
-                obj:FireServer({amount = amount})
-            end)
-            count = count + 1
-            table.insert(hitLog, obj:GetFullName())
-        elseif obj:IsA("RemoteFunction") then
-            -- Для RemoteFunction вызываем
-            pcall(function()
-                obj:InvokeServer(amount)
-            end)
-            count = count + 1
-            table.insert(hitLog, obj:GetFullName())
+    -- Меняем аргументы: если перехватили число, подменяем его на наше
+    local newArgs = {}
+    for i, arg in ipairs(capturedArgs) do
+        if type(arg) == "number" then
+            newArgs[i] = amount -- Подменяем число
+        else
+            newArgs[i] = arg -- Остальное оставляем как есть
         end
     end
 
-    -- Выводим в консоль, куда стреляли
-    print("[Colin Bomber] Отправлено в " .. count .. " ремоутов:")
-    for _, v in ipairs(hitLog) do
-        print(" -> " .. v)
-    end
-
-    status.Text = "Отправлено в " .. count .. " ремоутов. Проверь баланс."
+    -- Отправляем ОДИН раз, без циклов, чтобы античит не спалил
+    pcall(function()
+        capturedRemote:FireServer(unpack(newArgs))
+    end)
+    
+    status.Text = "Отправлено! Жди, не спамь, иначе выкинет."
+    button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    button.TextColor3 = Color3.fromRGB(150, 150, 150)
+    button.Text = "Ожидание нового действия..."
+    
+    -- Сбрасываем перехват, чтобы найти следующий вызов
+    capturedRemote = nil
+    capturedArgs = nil
 end)
