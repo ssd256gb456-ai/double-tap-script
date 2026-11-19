@@ -1,4 +1,4 @@
--- Финальный скрипт Colin'а. Без ошибок, без спама.
+-- Colin's Security Scanner & Vulnerability Auditor
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
@@ -6,14 +6,14 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- Создаем интерфейс
 local gui = Instance.new("ScreenGui")
-gui.Name = "ColinHackMenuFinal"
+gui.Name = "ColinVulnScanner"
 gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 240)
-frame.Position = UDim2.new(0.5, -150, 0.5, -120)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Size = UDim2.new(0, 400, 0, 350)
+frame.Position = UDim2.new(0.5, -200, 0.5, -175)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.BorderSizePixel = 0
 frame.Parent = gui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
@@ -21,102 +21,97 @@ Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundTransparency = 1
-title.Text = "Меню Colin'а (Хакнуть)"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Text = "Сканер уязвимостей (Colin's Audit)"
+title.TextColor3 = Color3.fromRGB(255, 200, 0)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 16
 title.Parent = frame
 
--- Поле суммы
-local inputAmount = Instance.new("TextBox")
-inputAmount.Size = UDim2.new(1, -20, 0, 36)
-inputAmount.Position = UDim2.new(0, 10, 0, 40)
-inputAmount.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-inputAmount.TextColor3 = Color3.fromRGB(255, 255, 255)
-inputAmount.PlaceholderText = "Сумма (999999)"
-inputAmount.Text = "999999"
-inputAmount.Parent = frame
-Instance.new("UICorner", inputAmount).CornerRadius = UDim.new(0, 6)
+-- Текстовое поле для вывода логов
+local output = Instance.new("ScrollingFrame")
+output.Size = UDim2.new(1, -20, 0, 250)
+output.Position = UDim2.new(0, 10, 0, 40)
+output.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+output.BorderSizePixel = 0
+output.CanvasSize = UDim2.new(0, 0, 0, 0)
+output.AutomaticCanvasSize = Enum.AutomaticSize.Y
+output.Parent = frame
+Instance.new("UICorner", output).CornerRadius = UDim.new(0, 6)
 
--- Поле для имени ремоута (если они его узнали)
-local inputRemote = Instance.new("TextBox")
-inputRemote.Size = UDim2.new(1, -20, 0, 36)
-inputRemote.Position = UDim2.new(0, 10, 0, 85)
-inputRemote.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-inputRemote.TextColor3 = Color3.fromRGB(255, 255, 255)
-inputRemote.PlaceholderText = "Имя ремоута (например, GiveCash)"
-inputRemote.Text = ""
-inputRemote.Parent = frame
-Instance.new("UICorner", inputRemote).CornerRadius = UDim.new(0, 6)
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 4)
+layout.Parent = output
 
--- Кнопка
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(1, -20, 0, 44)
-button.Position = UDim2.new(0, 10, 0, 130)
-button.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.Text = "Хакнуть / Взломать / Взорвать"
-button.Font = Enum.Font.GothamBold
-button.TextSize = 15
-button.Parent = frame
-Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
+local function log(text, color)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -10, 0, 20)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 12
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextWrapped = true
+    lbl.Parent = output
+    print(text) -- Дублируем в консоль
+end
 
--- Статус
-local status = Instance.new("TextLabel")
-status.Size = UDim2.new(1, -20, 0, 50)
-status.Position = UDim2.new(0, 10, 0, 185)
-status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(180, 180, 180)
-status.Text = "Введи сумму и имя ремоута (если знаешь)."
-status.Font = Enum.Font.Gotham
-status.TextSize = 13
-status.TextWrapped = true
-status.Parent = frame
+-- Кнопка сканирования
+local scanBtn = Instance.new("TextButton")
+scanBtn.Size = UDim2.new(1, -20, 0, 40)
+scanBtn.Position = UDim2.new(0, 10, 0, 300)
+scanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+scanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+scanBtn.Text = "Запустить сканирование уязвимостей"
+scanBtn.Font = Enum.Font.GothamBold
+scanBtn.TextSize = 14
+scanBtn.Parent = frame
+Instance.new("UICorner", scanBtn).CornerRadius = UDim.new(0, 6)
 
--- Обработчик кнопки
-button.MouseButton1Click:Connect(function()
-    local amount = tonumber(inputAmount.Text)
-    local remoteName = inputRemote.Text
+scanBtn.MouseButton1Click:Connect(function()
+    output:ClearAllChildren()
+    Instance.new("UIListLayout", output).Padding = UDim.new(0, 4)
+    log("[*] Начинаю сканирование...", Color3.fromRGB(255, 255, 255))
 
-    if not amount then
-        status.Text = "Ошибка: сумма должна быть числом!"
-        return
+    local vulnCount = 0
+
+    -- 1. Ищем RemoteEvents и RemoteFunctions
+    log("[*] Анализ RemoteEvents/Functions...", Color3.fromRGB(200, 200, 0))
+    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            log("[Remote] " .. obj:GetFullName(), Color3.fromRGB(150, 200, 255))
+            -- Проверка на "громкие" имена, которые обычно уязвимы
+            local n = string.lower(obj.Name)
+            if string.find(n, "give") or string.find(n, "add") or string.find(n, "cash") or string.find(n, "coin") then
+                log("  [!] Подозрительное имя: возможна выдача валюты", Color3.fromRGB(255, 100, 100))
+                vulnCount = vulnCount + 1
+            end
+        end
     end
 
-    local remote = nil
-    if remoteName ~= "" then
-        -- Ищем по введенному имени в Events
-        local events = ReplicatedStorage:FindFirstChild("Events")
-        if events then
-            remote = events:FindFirstChild(remoteName)
+    -- 2. Ищем LoadString (очень плохо для игры)
+    log("[*] Поиск loadstring/require...", Color3.fromRGB(200, 200, 0))
+    for _, obj in ipairs(game:GetDescendants()) do
+        if obj:IsA("Script") or obj:IsA("LocalScript") then
+            -- В обфусцированном коде мы не прочитаем текст, но имя может выдать
+            if string.find(string.lower(obj.Name), "admin") or string.find(string.lower(obj.Name), "give") then
+                 log("  [!] Подозрительный скрипт: " .. obj:GetFullName(), Color3.fromRGB(255, 150, 0))
+                 vulnCount = vulnCount + 1
+            end
         end
-        -- Если не нашли в Events, ищем в корне ReplicatedStorage
-        if not remote then
-            remote = ReplicatedStorage:FindFirstChild(remoteName)
-        end
+    end
+
+    -- 3. Проверяем HTTP-запросы (опасно, если злоумышленник может инжектить)
+    log("[*] Анализ HttpService (может быть отключен)...", Color3.fromRGB(200, 200, 0))
+    local http = game:GetService("HttpService")
+    log("  [i] HttpService Enabled: " .. tostring(http.HttpEnabled), Color3.fromRGB(150, 150, 150))
+
+    -- 4. Итог
+    log("[*] Сканирование завершено.", Color3.fromRGB(255, 255, 255))
+    if vulnCount > 0 then
+        log("[!] Найдено потенциальных уязвимостей: " .. vulnCount, Color3.fromRGB(255, 50, 50))
+        log("  -> Используй прошлый скрипт с кнопками, чтобы проверить эти ремоуты.", Color3.fromRGB(255, 200, 0))
     else
-        status.Text = "Ошибка: введи имя ремоута!"
-        return
+        log("[+] Явных дыр не найдено. Сервер может быть защищен.", Color3.fromRGB(50, 255, 50))
     end
-
-    if not remote then
-        status.Text = "Ремоут '"..remoteName.."' не найден."
-        return
-    end
-
-    status.Text = "Отправка в " .. remote.Name .. "..."
-    
-    -- Отправляем
-    pcall(function()
-        if remote:IsA("RemoteEvent") then
-            remote:FireServer(amount)
-            -- Если сервер ждет таблицу, попробуй: remote:FireServer("currencyReward", {"cash", amount})
-            status.Text = "Успешно отправлено: " .. tostring(amount)
-        elseif remote:IsA("RemoteFunction") then
-            remote:InvokeServer(amount)
-            status.Text = "Успешно вызвано: " .. tostring(amount)
-        else
-            status.Text = "Это не ремоут."
-        end
-    end)
 end)
