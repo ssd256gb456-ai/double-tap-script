@@ -1,4 +1,4 @@
--- Colin's Fixed Hideable Menu for Xeno
+-- Colin's Final ESP & Aimbot (Skeet Watermark Edition)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -19,7 +19,6 @@ getgenv().ColinSettings = {
     TEAM_CHECK = true
 }
 
--- GUI
 local gui = Instance.new("ScreenGui")
 gui.Name = "ColinMenu"
 gui.ResetOnSpawn = false
@@ -34,16 +33,24 @@ mainFrame.Active = true
 mainFrame.Parent = gui
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
 
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 30)
+topBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+topBar.BorderSizePixel = 0
+topBar.Parent = mainFrame
+Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 8)
+
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
+title.Size = UDim2.new(1, -60, 1, 0)
+title.Position = UDim2.new(0, 10, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "Colin's Cheat Menu"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
-title.Parent = mainFrame
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = topBar
 
--- Кнопка скрытия (крестик)
 local hideBtn = Instance.new("TextButton")
 hideBtn.Size = UDim2.new(0, 25, 0, 25)
 hideBtn.Position = UDim2.new(1, -30, 0, 2)
@@ -52,7 +59,7 @@ hideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 hideBtn.Text = "X"
 hideBtn.Font = Enum.Font.GothamBold
 hideBtn.TextSize = 14
-hideBtn.Parent = mainFrame
+hideBtn.Parent = topBar
 Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 4)
 
 local content = Instance.new("Frame")
@@ -61,7 +68,6 @@ content.Position = UDim2.new(0, 0, 0, 30)
 content.BackgroundTransparency = 1
 content.Parent = mainFrame
 
--- Кнопка ESP
 local espBtn = Instance.new("TextButton")
 espBtn.Size = UDim2.new(1, -20, 0, 30)
 espBtn.Position = UDim2.new(0, 10, 0, 5)
@@ -73,7 +79,6 @@ espBtn.TextSize = 13
 espBtn.Parent = content
 Instance.new("UICorner", espBtn).CornerRadius = UDim.new(0, 6)
 
--- Кнопка Aimbot
 local aimBtn = Instance.new("TextButton")
 aimBtn.Size = UDim2.new(1, -20, 0, 30)
 aimBtn.Position = UDim2.new(0, 10, 0, 40)
@@ -85,7 +90,6 @@ aimBtn.TextSize = 13
 aimBtn.Parent = content
 Instance.new("UICorner", aimBtn).CornerRadius = UDim.new(0, 6)
 
--- Кнопка "Скрыть все"
 local closeAllBtn = Instance.new("TextButton")
 closeAllBtn.Size = UDim2.new(1, -20, 0, 30)
 closeAllBtn.Position = UDim2.new(0, 10, 0, 80)
@@ -97,22 +101,39 @@ closeAllBtn.TextSize = 13
 closeAllBtn.Parent = content
 Instance.new("UICorner", closeAllBtn).CornerRadius = UDim.new(0, 6)
 
--- Логика скрытия
+-- Ватермарка "skeet 0.7"
+local watermark = Instance.new("TextLabel")
+watermark.Size = UDim2.new(0, 100, 0, 20)
+watermark.Position = UDim2.new(0, 10, 1, -30)
+watermark.BackgroundTransparency = 1
+watermark.Text = "skeet 0.7"
+watermark.TextColor3 = Color3.fromRGB(255, 255, 255)
+watermark.Font = Enum.Font.Code
+watermark.TextSize = 14
+watermark.Visible = false -- Изначально скрыта
+watermark.Parent = gui
+
+-- Логика скрытия/разворота
 local isOpen = true
 local function toggleMenu()
     isOpen = not isOpen
-    content.Visible = isOpen
-    hideBtn.Text = isOpen and "X" or "+"
-    hideBtn.BackgroundColor3 = isOpen and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(50, 200, 50)
+    if isOpen then
+        mainFrame.Visible = true
+        watermark.Visible = false
+    else
+        mainFrame.Visible = false
+        watermark.Visible = true
+    end
 end
 
 hideBtn.MouseButton1Click:Connect(toggleMenu)
 
 closeAllBtn.MouseButton1Click:Connect(function()
-    gui.Enabled = not gui.Enabled
+    mainFrame.Visible = false
+    watermark.Visible = true
+    StarterGui:SetCore("SendNotification", {Title="Colin", Text="Меню скрыто. Внизу осталась надпись skeet 0.7.", Duration=3})
 end)
 
--- Обработка кнопок
 espBtn.MouseButton1Click:Connect(function()
     getgenv().ColinSettings.ESP_ENABLED = not getgenv().ColinSettings.ESP_ENABLED
     espBtn.Text = "ESP: " .. (getgenv().ColinSettings.ESP_ENABLED and "ВКЛ" or "ВЫКЛ")
@@ -125,16 +146,14 @@ aimBtn.MouseButton1Click:Connect(function()
     aimBtn.BackgroundColor3 = getgenv().ColinSettings.AIMBOT_ENABLED and Color3.fromRGB(40, 150, 40) or Color3.fromRGB(150, 40, 40)
 end)
 
--- Бинд на RightShift (через Mouse.KeyDown, который Xeno ловит лучше)
-LocalPlayer:GetMouse().KeyDown:Connect(function(key)
-    if key == "rshift" then
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
         toggleMenu()
     end
 end)
 
--- ESP (Drawing)
 local ESP_Objects = {}
-
 local function createESP(player)
     if player == LocalPlayer then return end
     local box = Drawing.new("Square")
@@ -189,7 +208,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Aimbot
 RunService.RenderStepped:Connect(function()
     if not getgenv().ColinSettings.AIMBOT_ENABLED then return end
     local closest = nil
