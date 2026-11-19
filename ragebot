@@ -1,20 +1,18 @@
--- Исправленный скрипт Colin'а для накрутки денег
--- Запускай в LocalScript или executor.
-
+-- Colin's Fixed Hack Menu (No Infinite Loops, No GunFx Spam)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Шаг 1: Создаем меню (как в прошлом скрипте, но с защитой от ошибок)
+-- 1. Создаем GUI
 local gui = Instance.new("ScreenGui")
-gui.Name = "ColinHackMenu"
+gui.Name = "ColinFixedMenu"
 gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 260, 0, 180)
-frame.Position = UDim2.new(0.5, -130, 0.5, -90)
+frame.Size = UDim2.new(0, 280, 0, 180)
+frame.Position = UDim2.new(0.5, -140, 0.5, -90)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
 frame.Parent = gui
@@ -28,14 +26,11 @@ input.Size = UDim2.new(1, -20, 0, 36)
 input.Position = UDim2.new(0, 10, 0, 10)
 input.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 input.TextColor3 = Color3.fromRGB(255, 255, 255)
-input.PlaceholderText = "Сумма (например, 999999)"
-input.Text = "999999"
+input.PlaceholderText = "Введи сумму"
+input.Text = "1000000"
 input.ClearTextOnFocus = false
 input.Parent = frame
-
-local inputCorner = Instance.new("UICorner")
-inputCorner.CornerRadius = UDim.new(0, 6)
-inputCorner.Parent = input
+Instance.new("UICorner", input).CornerRadius = UDim.new(0, 6)
 
 local button = Instance.new("TextButton")
 button.Size = UDim2.new(1, -20, 0, 44)
@@ -46,34 +41,55 @@ button.Text = "Хакнуть / Взломать / Взорвать"
 button.Font = Enum.Font.GothamBold
 button.TextSize = 15
 button.Parent = frame
-
-local buttonCorner = Instance.new("UICorner")
-buttonCorner.CornerRadius = UDim.new(0, 6)
-buttonCorner.Parent = button
+Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
 
 local status = Instance.new("TextLabel")
-status.Size = UDim2.new(1, -20, 0, 40)
+status.Size = UDim2.new(1, -20, 0, 50)
 status.Position = UDim2.new(0, 10, 0, 110)
 status.BackgroundTransparency = 1
 status.TextColor3 = Color3.fromRGB(180, 180, 180)
-status.Text = "Ожидание..."
+status.Text = "Готов. Жду команды."
 status.Font = Enum.Font.Gotham
 status.TextSize = 14
 status.TextWrapped = true
 status.Parent = frame
 
--- Шаг 2: Безопасный поиск ремоута (без бесконечного WaitForChild)
-local function findMoneyRemote()
+-- 2. Настройка RemoteSpy для поиска правильного ремоута
+local spyLog = {}
+local function setupSpy()
+    if not hookfunction then 
+        status.Text = "Ошибка: нет hookfunction. Используй сторонний RemoteSpy."
+        return 
+    end
+    
+    local oldFire = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
+        -- Игнорируем GunFx, чтобы не спамить
+        if self.Name ~= "GunFx" then
+            local args = {...}
+            local argStr = ""
+            for i, v in ipairs(args) do
+                argStr = argStr .. tostring(v) .. ", "
+            end
+            table.insert(spyLog, self:GetFullName() .. " -> " .. argStr)
+            -- Выводим в консоль (F9)
+            print("[SPY] Игра отправила:", self.Name, "| Аргументы:", ...)
+        end
+        return oldFire(self, ...)
+    end)
+    
+    status.Text = "Spy активен. Сделай действие в игре (купи что-то), затем жми кнопку."
+end
+
+-- 3. Функция поиска ремоута
+local function findRemote()
     local events = ReplicatedStorage:FindFirstChild("Events")
     if not events then return nil end
-    
     for _, child in ipairs(events:GetChildren()) do
         if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
-            -- Ищем что-то похожее на деньги
-            if string.find(string.lower(child.Name), "coin") or 
-               string.find(string.lower(child.Name), "cash") or 
-               string.find(string.lower(child.Name), "money") or
-               string.find(string.lower(child.Name), "balance") then
+            local n = string.lower(child.Name)
+            if string.find(n, "coin") or string.find(n, "cash") or 
+               string.find(n, "money") or string.find(n, "balance") or
+               string.find(n, "reward") or string.find(n, "bank") then
                 return child
             end
         end
@@ -81,7 +97,7 @@ local function findMoneyRemote()
     return nil
 end
 
--- Шаг 3: Обработчик кнопки
+-- 4. Кнопка
 button.MouseButton1Click:Connect(function()
     local amount = tonumber(input.Text)
     if not amount then
@@ -89,37 +105,35 @@ button.MouseButton1Click:Connect(function()
         return
     end
 
-    local remote = findMoneyRemote()
-    if not remote then
-        status.Text = "Ремоут с деньгами не найден. Смотри консоль для спая."
+    -- Сначала пробуем найти ремоут по имени
+    local remote = findRemote()
+    
+    -- Если не нашли, пробуем взять из логов Spy
+    if not remote and #spyLog > 0 then
+        status.Text = "Ремоут не найден по имени. Смотри консоль (F9)."
+        for _, log in ipairs(spyLog) do
+            print("[LOG]", log)
+        end
         return
     end
 
-    status.Text = "Отправлено в " .. remote.Name .. ": " .. tostring(amount)
+    if not remote then
+        status.Text = "Ремоут не найден. Сделай покупку, чтобы Spy его увидел."
+        return
+    end
 
-    -- Шаг 4: Отправка с защитой от краша
-    task.spawn(function()
-        pcall(function()
-            if remote:IsA("RemoteEvent") then
-                -- Если сервер ждет число
-                remote:FireServer(amount)
-                -- Если сервер ждет таблицу, попробуй: remote:FireServer("currencyReward", {"bucks", amount})
-            elseif remote:IsA("RemoteFunction") then
-                remote:InvokeServer(amount)
-            end
-        end)
+    status.Text = "Отправка в " .. remote.Name .. "..."
+    
+    -- Отправляем один раз, без циклов
+    pcall(function()
+        if remote:IsA("RemoteEvent") then
+            remote:FireServer(amount) 
+        elseif remote:IsA("RemoteFunction") then
+            remote:InvokeServer(amount)
+        end
+        status.Text = "Успешно отправлено: " .. tostring(amount)
     end)
 end)
 
--- Шаг 5: RemoteSpy — выводим в консоль все вызовы ремоутов игры
--- Играй 5 секунд, собирай деньги, затем смотри консоль (F9)
-local oldFireServer
-if hookfunction then
-    oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
-        print("[SPY] FireServer:", self:GetFullName(), "...")
-        print("[SPY] Аргументы:", ...)
-        return oldFireServer(self, ...)
-    end)
-else
-    print("[Colin]: Твой executor не поддерживает hookfunction. Используй RemoteSpy отдельно.")
-end
+-- Запускаем Spy
+setupSpy()
